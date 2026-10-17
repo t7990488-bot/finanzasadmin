@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TRI - Control de Gastos</title>
+    <title>TRI - Control de Gastos y Vencimientos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { background-color: #0b132b; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
-        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass-card { background: rgba(30, 41, 59, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
     </style>
 </head>
 <body class="min-h-screen pb-12">
@@ -18,79 +18,95 @@
     <header class="glass-card sticky top-0 z-50 border-b border-slate-700/50 mb-6 px-4 py-3">
         <div class="max-w-5xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <div class="bg-gradient-to-tr from-teal-500 to-emerald-400 text-slate-950 font-black px-3 py-1.5 rounded-xl text-xl tracking-wider shadow-lg shadow-teal-500/20">
+                <div class="bg-gradient-to-tr from-teal-500 to-emerald-400 text-slate-950 font-black px-3.5 py-1.5 rounded-xl text-xl tracking-wider shadow-lg shadow-teal-500/20">
                     TRI
                 </div>
                 <div>
-                    <h1 class="text-lg font-bold leading-none text-white">Control de Gastos</h1>
+                    <h1 class="text-base font-bold leading-none text-white">Control de Gastos</h1>
                     <span id="statusBadge" class="text-xs text-amber-400 font-medium">Conectando...</span>
                 </div>
             </div>
-            <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-2 transition">
-                <i class="fa-solid fa-file-excel"></i> Exportar
-            </button>
+            <div class="flex items-center gap-2">
+                <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-2 rounded-lg flex items-center gap-1.5 transition shadow">
+                    <i class="fa-solid fa-file-excel"></i> Excel
+                </button>
+            </div>
         </div>
     </header>
 
     <main class="max-w-5xl mx-auto px-4 space-y-6">
-        <!-- ALERTA DE ERROR DE DIAGNÓSTICO -->
-        <div id="errorBox" class="hidden bg-rose-900/80 border border-rose-500 text-rose-200 p-4 rounded-xl text-sm">
-            <strong>Error de conexión detectado:</strong>
-            <p id="errorMessage" class="mt-1 font-mono text-xs"></p>
+        
+        <!-- ESTADÍSTICAS RÁPIDAS -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="glass-card p-4 rounded-2xl border-l-4 border-teal-400">
+                <p class="text-xs text-slate-400 font-medium">Total Gastos Registrados</p>
+                <h3 id="statTotal" class="text-2xl font-black text-white mt-1">\$0.00</h3>
+            </div>
+            <div class="glass-card p-4 rounded-2xl border-l-4 border-amber-400">
+                <p class="text-xs text-slate-400 font-medium">Próximos Vencimientos</p>
+                <h3 id="statPending" class="text-2xl font-black text-amber-300 mt-1">0</h3>
+            </div>
+            <div class="glass-card p-4 rounded-2xl border-l-4 border-emerald-400">
+                <p class="text-xs text-slate-400 font-medium">Estado Nube</p>
+                <h3 id="statSync" class="text-sm font-bold text-emerald-400 mt-2">Sincronizado</h3>
+            </div>
         </div>
 
-        <!-- FORMULARIO DE GASTO -->
-        <section class="glass-card p-5 rounded-2xl">
-            <h2 class="text-base font-semibold mb-4 text-teal-300 flex items-center gap-2">
-                <i class="fa-solid fa-plus-circle"></i> Nuevo Gasto
+        <!-- FORMULARIO DE NUEVO GASTO -->
+        <section class="glass-card p-5 rounded-2xl shadow-xl">
+            <h2 class="text-sm font-semibold mb-4 text-teal-300 flex items-center gap-2">
+                <i class="fa-solid fa-plus-circle text-teal-400"></i> Registrar Nuevo Gasto o Vencimiento
             </h2>
             <form id="expenseForm" onsubmit="saveExpense(event)" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
-                    <label class="block text-xs font-medium text-slate-300 mb-1">Descripción</label>
-                    <input type="text" id="desc" required placeholder="Ej: Supermercado" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400">
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Descripción / Concepto</label>
+                    <input type="text" id="desc" required placeholder="Ej: Supermercado / Luz" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">Monto (\$)</label>
-                    <input type="number" step="0.01" id="amount" required placeholder="0.00" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400">
+                    <input type="number" step="0.01" id="amount" required placeholder="0.00" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">Forma de Pago</label>
-                    <select id="paymentMethod" onchange="toggleCardOptions()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400">
-                        <option value="Efectivo">Efectivo / Transferencia</option>
+                    <select id="paymentMethod" onchange="toggleCardOptions()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white">
+                        <option value="Efectivo / Transferencia">Efectivo / Transferencia</option>
                         <option value="Tarjeta de Débito">Tarjeta de Débito</option>
                         <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
                     </select>
                 </div>
 
-                <div id="cardDetails" class="hidden col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-800/50 p-3 rounded-xl border border-slate-700">
+                <div id="cardDetails" class="hidden col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-800/60 p-3.5 rounded-xl border border-slate-700">
                     <div>
-                        <label class="block text-xs font-medium text-amber-300 mb-1">Nombre / Alias de la Tarjeta</label>
-                        <input type="text" id="cardAlias" placeholder="Ej: Visa Santander Titular" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400">
+                        <label class="block text-xs font-medium text-amber-300 mb-1">Nombre / Alias de Referencia de la Tarjeta</label>
+                        <input type="text" id="cardAlias" placeholder="Ej: Visa Santander / Débito Galicia" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400 text-white">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-slate-300 mb-1">Fecha de Vencimiento / Pago</label>
-                        <input type="date" id="dueDate" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400">
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Fecha de Vencimiento</label>
+                        <input type="date" id="dueDate" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white">
                     </div>
                 </div>
 
                 <div class="col-span-1 md:col-span-2 lg:col-span-3 flex justify-end">
-                    <button type="submit" class="bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-teal-500/20 transition">
-                        Guardar Gasto
+                    <button type="submit" class="bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold px-6 py-2.5 rounded-xl shadow-lg shadow-teal-500/20 transition flex items-center gap-2 text-sm">
+                        <i class="fa-solid fa-check"></i> Guardar en TRI
                     </button>
                 </div>
             </form>
         </section>
 
         <!-- LISTA DE GASTOS -->
-        <section class="glass-card p-5 rounded-2xl">
-            <h2 class="text-base font-semibold mb-4 text-slate-200">Historial de Gastos</h2>
+        <section class="glass-card p-5 rounded-2xl shadow-xl">
+            <h2 class="text-sm font-semibold mb-4 text-slate-200 flex items-center justify-between">
+                <span>Historial y Vencimientos</span>
+                <span id="counterBadge" class="text-xs bg-slate-800 text-teal-300 px-2.5 py-1 rounded-full font-mono">0 registros</span>
+            </h2>
             <div id="expenseList" class="space-y-3">
-                <p class="text-slate-400 text-sm text-center py-4">Cargando datos de la nube...</p>
+                <div class="text-center py-8 text-slate-400 text-sm">Cargando registros desde la nube...</div>
             </div>
         </section>
     </main>
 
-    <!-- FIREBASE SDK -->
+    <!-- FIREBASE SDK & APP LOGIC -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -105,28 +121,30 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        const db = getFirestore(app, "(default)");
         const expensesCol = collection(db, "tri_gastos_global");
 
         let currentExpenses = [];
 
-        // Escuchar en tiempo real
+        // Conexión en tiempo real
         onSnapshot(expensesCol, (snapshot) => {
             document.getElementById('statusBadge').innerText = "🟢 Nube Conectada";
             document.getElementById('statusBadge').className = "text-xs text-emerald-400 font-medium";
-            document.getElementById('errorBox').classList.add('hidden');
+            document.getElementById('statSync').innerText = "Sincronizado";
 
             currentExpenses = [];
             snapshot.forEach(docSnap => {
-                currentExpenses.push({ id: docSnap.id, ...docSnap.data() });
+                const data = docSnap.data();
+                if (data.desc) { // Ignorar documento de prueba si lo hubiera
+                    currentExpenses.push({ id: docSnap.id, ...data });
+                }
             });
             renderExpenses();
         }, (error) => {
             console.error("Firestore Error:", error);
-            document.getElementById('statusBadge').innerText = "🔴 Error de Nube";
+            document.getElementById('statusBadge').innerText = "🔴 Desconectado";
             document.getElementById('statusBadge').className = "text-xs text-rose-400 font-medium";
-            document.getElementById('errorBox').classList.remove('hidden');
-            document.getElementById('errorMessage').innerText = error.message + " (" + error.code + ")";
+            document.getElementById('statSync').innerText = "Error de Red";
         });
 
         window.toggleCardOptions = function() {
@@ -136,6 +154,8 @@
                 cardDetails.classList.remove('hidden');
             } else {
                 cardDetails.classList.add('hidden');
+                document.getElementById('cardAlias').value = '';
+                document.getElementById('dueDate').value = '';
             }
         };
 
@@ -151,8 +171,8 @@
                 desc,
                 amount,
                 method,
-                cardAlias: method.includes('Tarjeta') ? cardAlias : '',
-                dueDate: method.includes('Tarjeta') ? dueDate : '',
+                cardAlias: method.includes('Tarjeta') ? cardAlias : 'N/A',
+                dueDate: dueDate || 'Sin fecha',
                 createdAt: new Date().toISOString()
             };
 
@@ -161,47 +181,91 @@
                 document.getElementById('expenseForm').reset();
                 window.toggleCardOptions();
             } catch (err) {
-                alert("Error al guardar: " + err.message);
+                alert("Error al guardar en la nube: " + err.message);
             }
         };
 
         window.deleteExpense = async function(id) {
-            if (confirm("¿Eliminar este gasto?")) {
-                await deleteDoc(doc(db, "tri_gastos_global", id));
+            if (confirm("¿Estás seguro de eliminar este gasto?")) {
+                try {
+                    await deleteDoc(doc(db, "tri_gastos_global", id));
+                } catch (err) {
+                    alert("Error al eliminar: " + err.message);
+                }
             }
         };
 
         function renderExpenses() {
             const list = document.getElementById('expenseList');
+            document.getElementById('counterBadge').innerText = `${currentExpenses.length} registros`;
+            
+            let total = currentExpenses.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+            document.getElementById('statTotal').innerText = `$${total.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
+
+            // Contar próximos vencimientos (próximos 7 días)
+            const today = new Date();
+            let pendingCount = currentExpenses.filter(item => {
+                if (!item.dueDate || item.dueDate === 'Sin fecha') return false;
+                const due = new Date(item.dueDate + 'T00:00:00');
+                const diffTime = due - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return diffDays >= 0 && diffDays <= 7;
+            }).length;
+            document.getElementById('statPending').innerText = pendingCount;
+
             if (currentExpenses.length === 0) {
-                list.innerHTML = `<p class="text-slate-400 text-sm text-center py-4">No hay gastos registrados aún.</p>`;
+                list.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No hay gastos registrados todavía. ¡Agrega el primero arriba!</div>`;
                 return;
             }
 
+            // Ordenar por fecha de creación descendente
+            currentExpenses.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
             list.innerHTML = currentExpenses.map(item => `
-                <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/50 flex justify-between items-center">
-                    <div>
-                        <h3 class="font-bold text-white">${item.desc}</h3>
-                        <p class="text-xs text-slate-400">
-                            ${item.method} ${item.cardAlias ? '• <span class="text-amber-300">' + item.cardAlias + '</span>' : ''}
-                        </p>
-                        ${item.dueDate ? `<p class="text-xs text-teal-400 mt-1"><i class="fa-regular fa-calendar"></i> Vence: \${item.dueDate}</p>` : ''}
+                <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 transition hover:border-teal-500/40">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-bold text-white text-base">${item.desc}</h3>
+                            <span class="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-md">${item.method}</span>
+                        </div>
+                        <div class="text-xs text-slate-400 flex flex-wrap gap-3">
+                            ${item.cardAlias && item.cardAlias !== 'N/A' ? `<span><i class="fa-solid fa-credit-card text-amber-400"></i> Tarjeta: <strong class="text-amber-300">\${item.cardAlias}</strong></span>` : ''}
+                            ${item.dueDate && item.dueDate !== 'Sin fecha' ? `<span><i class="fa-regular fa-calendar text-teal-400"></i> Vence: <strong class="text-teal-300">\${item.dueDate}</strong></span>` : ''}
+                        </div>
                     </div>
-                    <div class="flex items-center gap-4">
-                        <span class="text-lg font-black text-emerald-400">$${item.amount.toLocaleString()}</span>
-                        <button onclick="deleteExpense('${item.id}')" class="text-rose-400 hover:text-rose-300 p-2">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+                    <div class="flex items-center justify-between w-full md:w-auto gap-4 border-t md:border-t-0 pt-2 md:pt-0 border-slate-700/50">
+                        <span class="text-lg font-black text-emerald-400">$${Number(item.amount).toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>
+                        <div class="flex items-center gap-1">
+                            ${item.dueDate && item.dueDate !== 'Sin fecha' ? `
+                            <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=\${encodeURIComponent('Vencimiento: ' + item.desc)}&details=${encodeURIComponent('Monto:$' + item.amount + ' - Tarjeta: ' + item.cardAlias)}&dates=${item.dueDate.replace(/-/g, '')}/${item.dueDate.replace(/-/g, '')}" target="_blank" title="Agregar a Google Calendar" class="bg-teal-600/30 hover:bg-teal-600 text-teal-300 hover:text-white p-2 rounded-lg transition text-xs">
+                                <i class="fa-solid fa-calendar-plus"></i>
+                            </a>` : ''}
+                            <button onclick="deleteExpense('${item.id}')" class="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 p-2 rounded-lg transition" title="Eliminar">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             `).join('');
         }
 
         window.exportToExcel = function() {
-            const ws = XLSX.utils.json_to_sheet(currentExpenses);
+            if (currentExpenses.length === 0) {
+                alert("No hay datos para exportar.");
+                return;
+            }
+            const dataToExport = currentExpenses.map(item => ({
+                "Descripción": item.desc,
+                "Monto (\$)": item.amount,
+                "Forma de Pago": item.method,
+                "Alias de Tarjeta": item.cardAlias || "",
+                "Fecha de Vencimiento": item.dueDate || "",
+                "Fecha de Registro": item.createdAt ? item.createdAt.substring(0, 10) : ""
+            }));
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Gastos TRI");
-            XLSX.writeFile(wb, "Gastos_TRI.xlsx");
+            XLSX.writeFile(wb, "Control_Gastos_TRI.xlsx");
         };
     </script>
 </body>
