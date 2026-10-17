@@ -43,7 +43,7 @@
                 <h3 id="statTotal" class="text-2xl font-black text-white mt-1">$0,00</h3>
             </div>
             <div class="glass-card p-4 rounded-2xl border-l-4 border-amber-400">
-                <p class="text-xs text-slate-400 font-medium">Próximos Vencimientos</p>
+                <p class="text-xs text-slate-400 font-medium">Próximos Vencimientos (sin pagar)</p>
                 <h3 id="statPending" class="text-2xl font-black text-amber-300 mt-1">0</h3>
             </div>
             <div class="glass-card p-4 rounded-2xl border-l-4 border-emerald-400">
@@ -60,7 +60,8 @@
             <form id="expenseForm" onsubmit="saveExpense(event)" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">Descripción / Concepto</label>
-                    <input type="text" id="desc" required placeholder="Ej: Supermercado / Luz" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white">
+                    <input type="text" id="desc" list="logoNames" autocomplete="off" required placeholder="Ej: Supermercado / Netflix" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white">
+                    <datalist id="logoNames"></datalist>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">Monto</label>
@@ -133,10 +134,32 @@
 
         <!-- LISTA DE GASTOS -->
         <section class="glass-card p-5 rounded-2xl shadow-xl">
-            <h2 class="text-sm font-semibold mb-4 text-slate-200 flex items-center justify-between">
+            <h2 class="text-sm font-semibold mb-4 text-slate-200 flex items-center justify-between gap-2 flex-wrap">
                 <span>Historial y Vencimientos</span>
                 <span id="counterBadge" class="text-xs bg-slate-800 text-teal-300 px-2.5 py-1 rounded-full font-mono">0 registros</span>
             </h2>
+
+            <!-- FILTROS -->
+            <div class="flex flex-wrap items-center gap-2 mb-4">
+                <div id="statusChips" class="flex bg-slate-800 rounded-lg p-1 gap-1">
+                    <button type="button" data-status="all" onclick="setStatusFilter('all')" class="text-xs font-semibold px-3 py-1.5 rounded-md transition bg-teal-500 text-slate-950">Todos</button>
+                    <button type="button" data-status="pending" onclick="setStatusFilter('pending')" class="text-xs font-semibold px-3 py-1.5 rounded-md transition text-slate-300 hover:bg-slate-700">Sin pagar</button>
+                    <button type="button" data-status="paid" onclick="setStatusFilter('paid')" class="text-xs font-semibold px-3 py-1.5 rounded-md transition text-slate-300 hover:bg-slate-700">Pagados</button>
+                </div>
+                <select id="methodFilter" onchange="setMethodFilter(this.value)" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-teal-400 text-white">
+                    <option value="all">Todas las formas de pago</option>
+                    <option value="Efectivo / Transferencia">Efectivo / Transferencia</option>
+                    <option value="cards">Todas las tarjetas</option>
+                    <option value="Tarjeta de Débito">Tarjeta de Débito</option>
+                    <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+                </select>
+                <input type="text" id="textFilter" oninput="setTextFilter(this.value)" placeholder="Buscar por concepto..." autocomplete="off" class="flex-1 min-w-[160px] bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-teal-400 text-white">
+                <button type="button" onclick="clearFilters()" class="text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg transition">
+                    <i class="fa-solid fa-filter-circle-xmark"></i> Limpiar
+                </button>
+            </div>
+            <p id="filteredTotal" class="text-xs text-slate-400 mb-3 hidden"></p>
+
             <div id="expenseList" class="space-y-3">
                 <div class="text-center py-8 text-slate-400 text-sm">Cargando registros desde la nube...</div>
             </div>
@@ -146,7 +169,7 @@
     <!-- FIREBASE SDK & APP LOGIC -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAXqG0SaBCS8bN42mQG8VcayYJuQGzdXfM",
@@ -168,6 +191,8 @@
         let currentExpenses = [];
         let logos = [];
         let pendingLogoId = null;
+        let autoLogoId = null;
+        let filters = { status: 'all', method: 'all', text: '' };
 
         const $ = (id) => document.getElementById(id);
         const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -204,6 +229,25 @@
         const parseAmount = (s) => parseFloat(String(s).replace(/[^0-9,]/g, '').replace(',', '.'));
         $('amount').addEventListener('input', (e) => formatAmountInput(e.target));
 
+        // ---------- NOMBRES DE LOGOS EN EL CONCEPTO ----------
+        $('desc').addEventListener('input', () => {
+            const v = $('desc').value.trim().toLowerCase();
+            const match = v ? logos.find(l => l.name.toLowerCase() === v) : null;
+            if (match) {
+                $('logoSelect').value = match.id;
+                autoLogoId = match.id;
+            } else if (autoLogoId && $('logoSelect').value === autoLogoId) {
+                $('logoSelect').value = '';
+                autoLogoId = null;
+            }
+        });
+
+        $('logoSelect').addEventListener('change', () => {
+            autoLogoId = null;
+            const l = logos.find(x => x.id === $('logoSelect').value);
+            if (l && $('desc').value.trim() === '') $('desc').value = l.name;
+        });
+
         // ---------- LOGOS ----------
         window.toggleLogoPanel = function() { $('logoPanel').classList.toggle('hidden'); };
 
@@ -215,7 +259,6 @@
             prev.classList.remove('hidden');
         });
 
-        // Reduce la imagen a 96x96 para guardarla chiquita dentro de Firestore (no necesita Storage)
         function fileToLogo(file) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
@@ -270,6 +313,7 @@
                 sel.value = actual;
                 if (actual === pendingLogoId) pendingLogoId = null;
             }
+            $('logoNames').innerHTML = logos.map(l => `<option value="${esc(l.name)}"></option>`).join('');
         }
 
         function renderLogoList() {
@@ -304,6 +348,37 @@
                 ? 'Falta publicar la regla de la colección tri_logos en Firestore.'
                 : 'No se pudieron leer los logos (' + error.code + ').';
         });
+
+        // ---------- FILTROS ----------
+        function paintStatusChips() {
+            document.querySelectorAll('#statusChips button').forEach(b => {
+                const active = b.dataset.status === filters.status;
+                b.className = 'text-xs font-semibold px-3 py-1.5 rounded-md transition ' +
+                    (active ? 'bg-teal-500 text-slate-950' : 'text-slate-300 hover:bg-slate-700');
+            });
+        }
+        window.setStatusFilter = function(s) { filters.status = s; paintStatusChips(); renderExpenses(); };
+        window.setMethodFilter = function(m) { filters.method = m; renderExpenses(); };
+        window.setTextFilter = function(t) { filters.text = t.trim().toLowerCase(); renderExpenses(); };
+        window.clearFilters = function() {
+            filters = { status: 'all', method: 'all', text: '' };
+            $('methodFilter').value = 'all';
+            $('textFilter').value = '';
+            paintStatusChips();
+            renderExpenses();
+        };
+
+        function getFiltered() {
+            return currentExpenses.filter(i => {
+                const paid = !!i.paid;
+                if (filters.status === 'paid' && !paid) return false;
+                if (filters.status === 'pending' && paid) return false;
+                if (filters.method === 'cards') { if (!String(i.method || '').includes('Tarjeta')) return false; }
+                else if (filters.method !== 'all' && i.method !== filters.method) return false;
+                if (filters.text && !String(i.desc || '').toLowerCase().includes(filters.text)) return false;
+                return true;
+            });
+        }
 
         // ---------- GASTOS ----------
         onSnapshot(expensesCol, (snapshot) => {
@@ -360,15 +435,31 @@
                 dueDate: dueDate || 'Sin fecha',
                 logoId: logo ? logo.id : '',
                 logoName: logo ? logo.name : '',
+                paid: false,
                 createdAt: new Date().toISOString()
             };
 
             try {
                 await addDoc(expensesCol, expenseData);
                 $('expenseForm').reset();
+                autoLogoId = null;
                 window.toggleCardOptions();
             } catch (err) {
                 alert("Error al guardar en la nube (" + err.code + "): " + err.message);
+            }
+        };
+
+        window.togglePaid = async function(id) {
+            const item = currentExpenses.find(x => x.id === id);
+            if (!item) return;
+            const nuevo = !item.paid;
+            try {
+                await updateDoc(doc(db, COLECCION, id), {
+                    paid: nuevo,
+                    paidAt: nuevo ? new Date().toISOString() : ''
+                });
+            } catch (err) {
+                alert("Error al actualizar (" + err.code + "): " + err.message);
             }
         };
 
@@ -392,18 +483,34 @@
         function renderExpenses() {
             const list = $('expenseList');
             if (!list) return;
-            $('counterBadge').innerText = `${currentExpenses.length} registros`;
+
+            const filtered = getFiltered();
+            const hayFiltros = filters.status !== 'all' || filters.method !== 'all' || filters.text !== '';
+            $('counterBadge').innerText = hayFiltros
+                ? `${filtered.length} de ${currentExpenses.length} registros`
+                : `${currentExpenses.length} registros`;
+
+            const ft = $('filteredTotal');
+            if (hayFiltros) {
+                const sumF = filtered.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+                ft.innerText = `Total de los gastos filtrados: ${money(sumF)}`;
+                ft.classList.remove('hidden');
+            } else {
+                ft.classList.add('hidden');
+            }
 
             const total = currentExpenses.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
             $('statTotal').innerText = money(total);
 
             const today = new Date();
             today.setHours(0, 0, 0, 0);
+            const diasHasta = (item) => Math.round((new Date(item.dueDate + 'T00:00:00') - today) / 86400000);
+
             const pendingCount = currentExpenses.filter(item => {
+                if (item.paid) return false;
                 if (!item.dueDate || item.dueDate === 'Sin fecha') return false;
-                const due = new Date(item.dueDate + 'T00:00:00');
-                const diffDays = Math.round((due - today) / (1000 * 60 * 60 * 24));
-                return diffDays >= 0 && diffDays <= 7;
+                const d = diasHasta(item);
+                return d >= 0 && d <= 7;
             }).length;
             $('statPending').innerText = pendingCount;
 
@@ -411,12 +518,18 @@
                 list.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No hay gastos registrados todavía. ¡Agregá el primero arriba!</div>`;
                 return;
             }
+            if (filtered.length === 0) {
+                list.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">Ningún gasto coincide con los filtros.</div>`;
+                return;
+            }
 
-            currentExpenses.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-            list.innerHTML = currentExpenses.map(item => {
+            list.innerHTML = filtered.map(item => {
+                const paid = !!item.paid;
                 const tieneTarjeta = item.cardAlias && item.cardAlias !== 'N/A';
                 const tieneFecha = item.dueDate && item.dueDate !== 'Sin fecha';
+                const vencido = !paid && tieneFecha && diasHasta(item) < 0;
                 const fechaCal = tieneFecha ? item.dueDate.replace(/-/g, '') : '';
                 const calUrl = tieneFecha
                     ? 'https://calendar.google.com/calendar/render?action=TEMPLATE'
@@ -425,14 +538,19 @@
                       + '&dates=' + fechaCal + '/' + fechaCal
                     : '';
 
+                const estadoBadge = paid
+                    ? `<span class="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md font-semibold">Pagado</span>`
+                    : (vencido ? `<span class="text-xs bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-md font-semibold">Vencido</span>` : '');
+
                 return `
-                <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 transition hover:border-teal-500/40">
+                <div class="bg-slate-800/60 p-4 rounded-xl border ${paid ? 'border-emerald-500/30' : 'border-slate-700/50'} flex flex-col md:flex-row justify-between items-start md:items-center gap-3 transition hover:border-teal-500/40">
                     <div class="flex items-center gap-3">
                         ${logoBadge(item)}
                         <div class="space-y-1">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <h3 class="font-bold text-white text-base">${esc(item.desc)}</h3>
                                 <span class="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-md">${esc(item.method)}</span>
+                                ${estadoBadge}
                             </div>
                             <div class="text-xs text-slate-400 flex flex-wrap gap-3">
                                 ${tieneTarjeta ? `<span><i class="fa-solid fa-credit-card text-amber-400"></i> Tarjeta: <strong class="text-amber-300">${esc(item.cardAlias)}</strong></span>` : ''}
@@ -441,8 +559,11 @@
                         </div>
                     </div>
                     <div class="flex items-center justify-between w-full md:w-auto gap-4 border-t md:border-t-0 pt-2 md:pt-0 border-slate-700/50">
-                        <span class="text-lg font-black text-emerald-400">${money(item.amount)}</span>
+                        <span class="text-lg font-black ${paid ? 'text-slate-400' : 'text-emerald-400'}">${money(item.amount)}</span>
                         <div class="flex items-center gap-1">
+                            <button onclick="togglePaid('${esc(item.id)}')" class="${paid ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' : 'text-slate-300 hover:text-emerald-300 hover:bg-emerald-500/10'} px-2.5 py-2 rounded-lg transition text-xs font-semibold flex items-center gap-1.5" title="${paid ? 'Marcar como sin pagar' : 'Marcar como pagado'}">
+                                <i class="fa-solid ${paid ? 'fa-circle-check' : 'fa-circle'}"></i> ${paid ? 'Pagado' : 'Pagar'}
+                            </button>
                             ${tieneFecha ? `
                             <a href="${esc(calUrl)}" target="_blank" rel="noopener" title="Agregar a Google Calendar" class="bg-teal-600/30 hover:bg-teal-600 text-teal-300 hover:text-white p-2 rounded-lg transition text-xs">
                                 <i class="fa-solid fa-calendar-plus"></i>
@@ -457,14 +578,16 @@
         }
 
         window.exportToExcel = function() {
-            if (currentExpenses.length === 0) {
+            const datos = getFiltered();
+            if (datos.length === 0) {
                 alert("No hay datos para exportar.");
                 return;
             }
-            const dataToExport = currentExpenses.map(item => ({
+            const dataToExport = datos.map(item => ({
                 "Descripción": item.desc,
                 "Logo": item.logoName || "",
                 "Monto ($)": item.amount,
+                "Estado": item.paid ? "Pagado" : "Sin pagar",
                 "Forma de Pago": item.method,
                 "Alias de Tarjeta": item.cardAlias || "",
                 "Fecha de Vencimiento": item.dueDate || "",
