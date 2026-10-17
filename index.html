@@ -14,13 +14,10 @@
 </head>
 <body class="min-h-screen pb-12">
 
-    <!-- HEADER TRI -->
     <header class="glass-card sticky top-0 z-50 border-b border-slate-700/50 mb-6 px-4 py-3">
         <div class="max-w-5xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <div class="bg-gradient-to-tr from-teal-500 to-emerald-400 text-slate-950 font-black px-3.5 py-1.5 rounded-xl text-xl tracking-wider shadow-lg shadow-teal-500/20">
-                    TRI
-                </div>
+                <div class="bg-gradient-to-tr from-teal-500 to-emerald-400 text-slate-950 font-black px-3.5 py-1.5 rounded-xl text-xl tracking-wider shadow-lg shadow-teal-500/20">TRI</div>
                 <div>
                     <h1 class="text-base font-bold leading-none text-white">Control de Gastos</h1>
                     <span id="statusBadge" class="text-xs text-amber-400 font-medium">Conectando...</span>
@@ -36,11 +33,11 @@
 
     <main class="max-w-5xl mx-auto px-4 space-y-6">
 
-        <!-- ESTADÍSTICAS RÁPIDAS -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="glass-card p-4 rounded-2xl border-l-4 border-teal-400">
                 <p class="text-xs text-slate-400 font-medium">Total Gastos Registrados</p>
                 <h3 id="statTotal" class="text-2xl font-black text-white mt-1">$0,00</h3>
+                <p id="statRemaining" class="text-xs text-slate-400 mt-1">Falta pagar: $0,00</p>
             </div>
             <div class="glass-card p-4 rounded-2xl border-l-4 border-amber-400">
                 <p class="text-xs text-slate-400 font-medium">Próximos Vencimientos (sin pagar)</p>
@@ -52,7 +49,6 @@
             </div>
         </div>
 
-        <!-- FORMULARIO DE NUEVO GASTO -->
         <section class="glass-card p-5 rounded-2xl shadow-xl">
             <h2 class="text-sm font-semibold mb-4 text-teal-300 flex items-center gap-2">
                 <i class="fa-solid fa-plus-circle text-teal-400"></i> Registrar Nuevo Gasto o Vencimiento
@@ -94,8 +90,25 @@
                         <input type="text" id="cardAlias" placeholder="Ej: Visa Santander / Débito Galicia" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400 text-white">
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-slate-300 mb-1">Fecha de Vencimiento</label>
+                        <label id="dueLabel" class="block text-xs font-medium text-slate-300 mb-1">Fecha de Vencimiento</label>
                         <input type="date" id="dueDate" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white">
+                    </div>
+                </div>
+
+                <div id="cuotasBox" class="hidden col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-800/60 p-3.5 rounded-xl border border-amber-500/30">
+                    <div>
+                        <label class="block text-xs font-medium text-amber-300 mb-1">Cantidad de cuotas</label>
+                        <input type="number" id="cuotas" min="1" max="60" value="1" inputmode="numeric" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">El monto ingresado es</label>
+                        <select id="cuotaModo" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400 text-white">
+                            <option value="total">El total de la compra</option>
+                            <option value="cuota">El valor de cada cuota</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <p id="cuotaPreview" class="text-sm font-semibold text-amber-300 min-h-[1.25rem]"></p>
                     </div>
                 </div>
 
@@ -106,7 +119,6 @@
                 </div>
             </form>
 
-            <!-- PANEL DE LOGOS -->
             <div id="logoPanel" class="hidden mt-4 bg-slate-800/60 p-4 rounded-xl border border-slate-700 space-y-4">
                 <h3 class="text-sm font-semibold text-amber-300 flex items-center gap-2">
                     <i class="fa-solid fa-images"></i> Mis logos
@@ -132,14 +144,12 @@
             </div>
         </section>
 
-        <!-- LISTA DE GASTOS -->
         <section class="glass-card p-5 rounded-2xl shadow-xl">
             <h2 class="text-sm font-semibold mb-4 text-slate-200 flex items-center justify-between gap-2 flex-wrap">
                 <span>Historial y Vencimientos</span>
                 <span id="counterBadge" class="text-xs bg-slate-800 text-teal-300 px-2.5 py-1 rounded-full font-mono">0 registros</span>
             </h2>
 
-            <!-- FILTROS -->
             <div class="flex flex-wrap items-center gap-2 mb-4">
                 <div id="statusChips" class="flex bg-slate-800 rounded-lg p-1 gap-1">
                     <button type="button" data-status="all" onclick="setStatusFilter('all')" class="text-xs font-semibold px-3 py-1.5 rounded-md transition bg-teal-500 text-slate-950">Todos</button>
@@ -152,6 +162,7 @@
                     <option value="cards">Todas las tarjetas</option>
                     <option value="Tarjeta de Débito">Tarjeta de Débito</option>
                     <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+                    <option value="installments">Solo en cuotas</option>
                 </select>
                 <input type="text" id="textFilter" oninput="setTextFilter(this.value)" placeholder="Buscar por concepto..." autocomplete="off" class="flex-1 min-w-[160px] bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-teal-400 text-white">
                 <button type="button" onclick="clearFilters()" class="text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg transition">
@@ -166,7 +177,6 @@
         </section>
     </main>
 
-    <!-- FIREBASE SDK & APP LOGIC -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, updateDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -197,27 +207,43 @@
         const $ = (id) => document.getElementById(id);
         const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const money = (n) => '$' + (Number(n) || 0).toLocaleString('es-AR', {minimumFractionDigits: 2});
+        const round2 = (n) => Math.round(n * 100) / 100;
+
+        // ---------- CUOTAS: helpers ----------
+        const nCuotas = (i) => Math.max(1, parseInt(i.cuotas) || 1);
+        const valorCuota = (i) => i.cuotaAmount != null ? Number(i.cuotaAmount) : (Number(i.amount) || 0) / nCuotas(i);
+        const pagadas = (i) => i.paid ? nCuotas(i) : Math.min(parseInt(i.cuotasPagadas) || 0, nCuotas(i));
+        const restante = (i) => i.paid ? 0 : Math.max(0, (Number(i.amount) || 0) - pagadas(i) * valorCuota(i));
+        const tieneFechaItem = (i) => i.dueDate && i.dueDate !== 'Sin fecha';
+
+        function addMonths(iso, m) {
+            const [y, mo, d] = iso.split('-').map(Number);
+            const t = new Date(y, mo - 1 + m, 1);
+            const last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate();
+            return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
+        }
+        // Fecha de la próxima cuota a pagar (o de la última si ya está todo pago)
+        const proxVenc = (i) => tieneFechaItem(i) ? addMonths(i.dueDate, Math.min(pagadas(i), nCuotas(i) - 1)) : null;
+
+        const hoy = () => { const t = new Date(); t.setHours(0, 0, 0, 0); return t; };
+        const diasHasta = (iso) => Math.round((new Date(iso + 'T00:00:00') - hoy()) / 86400000);
 
         // ---------- MONTO CON FORMATO AUTOMÁTICO ($ 1.234,56) ----------
         function formatAmountInput(el) {
             const raw = el.value;
             const caret = el.selectionStart ?? raw.length;
             const before = raw.slice(0, caret).replace(/[^0-9,]/g, '').length;
-
             const clean = raw.replace(/[^0-9,]/g, '');
             const idx = clean.indexOf(',');
             let int = idx === -1 ? clean : clean.slice(0, idx);
             const dec = idx === -1 ? null : clean.slice(idx + 1).replace(/,/g, '').slice(0, 2);
-
             int = int.replace(/^0+(?=\d)/, '');
             const intFmt = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
             const out = clean === '' ? '' : '$ ' + (intFmt || '0') + (dec !== null ? ',' + dec : '');
             el.value = out;
-
             let pos = out.length;
-            if (before === 0) {
-                pos = out ? 2 : 0;
-            } else {
+            if (before === 0) { pos = out ? 2 : 0; }
+            else {
                 let count = 0;
                 for (let i = 0; i < out.length; i++) {
                     if (/[0-9,]/.test(out[i])) count++;
@@ -227,21 +253,27 @@
             try { el.setSelectionRange(pos, pos); } catch (e) {}
         }
         const parseAmount = (s) => parseFloat(String(s).replace(/[^0-9,]/g, '').replace(',', '.'));
-        $('amount').addEventListener('input', (e) => formatAmountInput(e.target));
+        $('amount').addEventListener('input', (e) => { formatAmountInput(e.target); updateCuotaPreview(); });
+        $('cuotas').addEventListener('input', updateCuotaPreview);
+        $('cuotaModo').addEventListener('change', updateCuotaPreview);
+
+        function updateCuotaPreview() {
+            const credit = $('paymentMethod').value === 'Tarjeta de Crédito';
+            const c = Math.max(1, parseInt($('cuotas').value) || 1);
+            const a = parseAmount($('amount').value);
+            $('dueLabel').innerText = credit && c > 1 ? 'Vencimiento de la 1ª cuota' : 'Fecha de Vencimiento';
+            if (!credit || c < 2 || !(a > 0)) { $('cuotaPreview').innerText = ''; return; }
+            const total = $('cuotaModo').value === 'cuota' ? a * c : a;
+            $('cuotaPreview').innerText = `${c} cuotas de ${money(total / c)} · Total ${money(total)}`;
+        }
 
         // ---------- NOMBRES DE LOGOS EN EL CONCEPTO ----------
         $('desc').addEventListener('input', () => {
             const v = $('desc').value.trim().toLowerCase();
             const match = v ? logos.find(l => l.name.toLowerCase() === v) : null;
-            if (match) {
-                $('logoSelect').value = match.id;
-                autoLogoId = match.id;
-            } else if (autoLogoId && $('logoSelect').value === autoLogoId) {
-                $('logoSelect').value = '';
-                autoLogoId = null;
-            }
+            if (match) { $('logoSelect').value = match.id; autoLogoId = match.id; }
+            else if (autoLogoId && $('logoSelect').value === autoLogoId) { $('logoSelect').value = ''; autoLogoId = null; }
         });
-
         $('logoSelect').addEventListener('change', () => {
             autoLogoId = null;
             const l = logos.find(x => x.id === $('logoSelect').value);
@@ -374,6 +406,7 @@
                 if (filters.status === 'paid' && !paid) return false;
                 if (filters.status === 'pending' && paid) return false;
                 if (filters.method === 'cards') { if (!String(i.method || '').includes('Tarjeta')) return false; }
+                else if (filters.method === 'installments') { if (nCuotas(i) < 2) return false; }
                 else if (filters.method !== 'all' && i.method !== filters.method) return false;
                 if (filters.text && !String(i.desc || '').toLowerCase().includes(filters.text)) return false;
                 return true;
@@ -385,7 +418,6 @@
             $('statusBadge').innerText = "🟢 Nube Conectada";
             $('statusBadge').className = "text-xs text-emerald-400 font-medium";
             $('statSync').innerText = "Sincronizado";
-
             currentExpenses = [];
             snapshot.forEach(docSnap => {
                 const data = docSnap.data();
@@ -396,40 +428,52 @@
             console.error("Firestore Error:", error);
             $('statusBadge').innerText = "🔴 Error: " + error.code;
             $('statusBadge').className = "text-xs text-rose-400 font-medium";
-            $('statSync').innerText = error.code === 'permission-denied'
-                ? "Revisar reglas de Firestore"
-                : (error.message || "Error de red");
+            $('statSync').innerText = error.code === 'permission-denied' ? "Revisar reglas de Firestore" : (error.message || "Error de red");
             $('expenseList').innerHTML =
                 `<div class="text-center py-8 text-rose-300 text-sm">No se pudo leer la base: ${esc(error.code)}. Mirá la consola (F12) para más detalle.</div>`;
         });
 
         window.toggleCardOptions = function() {
             const method = $('paymentMethod').value;
-            const cardDetails = $('cardDetails');
             if (method.includes('Tarjeta')) {
-                cardDetails.classList.remove('hidden');
+                $('cardDetails').classList.remove('hidden');
             } else {
-                cardDetails.classList.add('hidden');
+                $('cardDetails').classList.add('hidden');
                 $('cardAlias').value = '';
                 $('dueDate').value = '';
             }
+            if (method === 'Tarjeta de Crédito') {
+                $('cuotasBox').classList.remove('hidden');
+            } else {
+                $('cuotasBox').classList.add('hidden');
+                $('cuotas').value = 1;
+                $('cuotaModo').value = 'total';
+            }
+            updateCuotaPreview();
         };
 
         window.saveExpense = async function(e) {
             e.preventDefault();
             const desc = $('desc').value.trim();
-            const amount = parseAmount($('amount').value);
+            const amountIn = parseAmount($('amount').value);
             const method = $('paymentMethod').value;
             const cardAlias = $('cardAlias').value.trim();
             const dueDate = $('dueDate').value;
             const logoId = $('logoSelect').value;
             const logo = logos.find(l => l.id === logoId);
 
-            if (!(amount >= 0)) { alert("Ingresá un monto válido."); return; }
+            if (!(amountIn >= 0)) { alert("Ingresá un monto válido."); return; }
+
+            const credit = method === 'Tarjeta de Crédito';
+            const cuotas = credit ? Math.min(60, Math.max(1, parseInt($('cuotas').value) || 1)) : 1;
+            const total = round2(credit && $('cuotaModo').value === 'cuota' ? amountIn * cuotas : amountIn);
 
             const expenseData = {
                 desc,
-                amount,
+                amount: total,
+                cuotas,
+                cuotaAmount: round2(total / cuotas),
+                cuotasPagadas: 0,
                 method,
                 cardAlias: method.includes('Tarjeta') ? cardAlias : 'N/A',
                 dueDate: dueDate || 'Sin fecha',
@@ -456,20 +500,43 @@
             try {
                 await updateDoc(doc(db, COLECCION, id), {
                     paid: nuevo,
+                    cuotasPagadas: nuevo ? nCuotas(item) : 0,
                     paidAt: nuevo ? new Date().toISOString() : ''
                 });
-            } catch (err) {
-                alert("Error al actualizar (" + err.code + "): " + err.message);
-            }
+            } catch (err) { alert("Error al actualizar (" + err.code + "): " + err.message); }
+        };
+
+        window.payInstallment = async function(id) {
+            const item = currentExpenses.find(x => x.id === id);
+            if (!item) return;
+            const n = nCuotas(item);
+            const nuevo = pagadas(item) + 1;
+            if (nuevo > n) return;
+            try {
+                await updateDoc(doc(db, COLECCION, id), {
+                    cuotasPagadas: nuevo,
+                    paid: nuevo >= n,
+                    paidAt: nuevo >= n ? new Date().toISOString() : ''
+                });
+            } catch (err) { alert("Error al actualizar (" + err.code + "): " + err.message); }
+        };
+
+        window.undoInstallment = async function(id) {
+            const item = currentExpenses.find(x => x.id === id);
+            if (!item) return;
+            try {
+                await updateDoc(doc(db, COLECCION, id), {
+                    cuotasPagadas: Math.max(0, pagadas(item) - 1),
+                    paid: false,
+                    paidAt: ''
+                });
+            } catch (err) { alert("Error al actualizar (" + err.code + "): " + err.message); }
         };
 
         window.deleteExpense = async function(id) {
             if (confirm("¿Estás seguro de eliminar este gasto?")) {
-                try {
-                    await deleteDoc(doc(db, COLECCION, id));
-                } catch (err) {
-                    alert("Error al eliminar (" + err.code + "): " + err.message);
-                }
+                try { await deleteDoc(doc(db, COLECCION, id)); }
+                catch (err) { alert("Error al eliminar (" + err.code + "): " + err.message); }
             }
         };
 
@@ -490,26 +557,23 @@
                 ? `${filtered.length} de ${currentExpenses.length} registros`
                 : `${currentExpenses.length} registros`;
 
+            const sum = (arr, fn) => arr.reduce((acc, i) => acc + fn(i), 0);
             const ft = $('filteredTotal');
             if (hayFiltros) {
-                const sumF = filtered.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
-                ft.innerText = `Total de los gastos filtrados: ${money(sumF)}`;
+                ft.innerText = `Total filtrado: ${money(sum(filtered, i => Number(i.amount) || 0))} · Falta pagar: ${money(sum(filtered, restante))}`;
                 ft.classList.remove('hidden');
             } else {
                 ft.classList.add('hidden');
             }
 
-            const total = currentExpenses.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
-            $('statTotal').innerText = money(total);
-
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const diasHasta = (item) => Math.round((new Date(item.dueDate + 'T00:00:00') - today) / 86400000);
+            $('statTotal').innerText = money(sum(currentExpenses, i => Number(i.amount) || 0));
+            $('statRemaining').innerText = 'Falta pagar: ' + money(sum(currentExpenses, restante));
 
             const pendingCount = currentExpenses.filter(item => {
                 if (item.paid) return false;
-                if (!item.dueDate || item.dueDate === 'Sin fecha') return false;
-                const d = diasHasta(item);
+                const f = proxVenc(item);
+                if (!f) return false;
+                const d = diasHasta(f);
                 return d >= 0 && d <= 7;
             }).length;
             $('statPending').innerText = pendingCount;
@@ -527,20 +591,44 @@
 
             list.innerHTML = filtered.map(item => {
                 const paid = !!item.paid;
+                const n = nCuotas(item);
+                const cuotasOn = n > 1;
+                const pag = pagadas(item);
                 const tieneTarjeta = item.cardAlias && item.cardAlias !== 'N/A';
-                const tieneFecha = item.dueDate && item.dueDate !== 'Sin fecha';
-                const vencido = !paid && tieneFecha && diasHasta(item) < 0;
-                const fechaCal = tieneFecha ? item.dueDate.replace(/-/g, '') : '';
-                const calUrl = tieneFecha
-                    ? 'https://calendar.google.com/calendar/render?action=TEMPLATE'
-                      + '&text=' + encodeURIComponent('Vencimiento: ' + item.desc)
-                      + '&details=' + encodeURIComponent('Monto: ' + money(item.amount) + ' - Tarjeta: ' + (item.cardAlias || ''))
-                      + '&dates=' + fechaCal + '/' + fechaCal
-                    : '';
+                const fecha = proxVenc(item);
+                const vencido = !paid && fecha && diasHasta(fecha) < 0;
+
+                let calUrl = '';
+                if (fecha) {
+                    const f = fecha.replace(/-/g, '');
+                    const etiqueta = cuotasOn ? ` (cuota ${Math.min(pag + 1, n)}/${n})` : '';
+                    calUrl = 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+                        + '&text=' + encodeURIComponent('Vencimiento: ' + item.desc + etiqueta)
+                        + '&details=' + encodeURIComponent('Monto: ' + money(valorCuota(item)) + ' - Tarjeta: ' + (item.cardAlias || ''))
+                        + '&dates=' + f + '/' + f;
+                }
 
                 const estadoBadge = paid
                     ? `<span class="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md font-semibold">Pagado</span>`
                     : (vencido ? `<span class="text-xs bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded-md font-semibold">Vencido</span>` : '');
+                const cuotasBadge = cuotasOn
+                    ? `<span class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-md font-semibold">${pag}/${n} cuotas pagas</span>` : '';
+
+                const montoPrincipal = cuotasOn ? valorCuota(item) : item.amount;
+                const montoSub = cuotasOn
+                    ? `<span class="block text-xs text-slate-400 font-normal text-right">${n} cuotas · Total ${money(item.amount)}</span>` : '';
+
+                let botonPago;
+                if (cuotasOn) {
+                    botonPago = paid
+                        ? `<button onclick="undoInstallment('${esc(item.id)}')" class="bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 px-2.5 py-2 rounded-lg transition text-xs font-semibold flex items-center gap-1.5" title="Deshacer la última cuota"><i class="fa-solid fa-circle-check"></i> Pagado</button>`
+                        : `<button onclick="payInstallment('${esc(item.id)}')" class="text-slate-300 hover:text-emerald-300 hover:bg-emerald-500/10 px-2.5 py-2 rounded-lg transition text-xs font-semibold flex items-center gap-1.5" title="Marcar la cuota como pagada"><i class="fa-solid fa-circle"></i> Pagar cuota ${pag + 1}</button>`;
+                    if (pag > 0 && !paid) {
+                        botonPago += `<button onclick="undoInstallment('${esc(item.id)}')" class="text-slate-400 hover:text-white hover:bg-slate-700 p-2 rounded-lg transition text-xs" title="Deshacer la última cuota pagada"><i class="fa-solid fa-rotate-left"></i></button>`;
+                    }
+                } else {
+                    botonPago = `<button onclick="togglePaid('${esc(item.id)}')" class="${paid ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' : 'text-slate-300 hover:text-emerald-300 hover:bg-emerald-500/10'} px-2.5 py-2 rounded-lg transition text-xs font-semibold flex items-center gap-1.5" title="${paid ? 'Marcar como sin pagar' : 'Marcar como pagado'}"><i class="fa-solid ${paid ? 'fa-circle-check' : 'fa-circle'}"></i> ${paid ? 'Pagado' : 'Pagar'}</button>`;
+                }
 
                 return `
                 <div class="bg-slate-800/60 p-4 rounded-xl border ${paid ? 'border-emerald-500/30' : 'border-slate-700/50'} flex flex-col md:flex-row justify-between items-start md:items-center gap-3 transition hover:border-teal-500/40">
@@ -550,21 +638,23 @@
                             <div class="flex items-center gap-2 flex-wrap">
                                 <h3 class="font-bold text-white text-base">${esc(item.desc)}</h3>
                                 <span class="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-md">${esc(item.method)}</span>
+                                ${cuotasBadge}
                                 ${estadoBadge}
                             </div>
                             <div class="text-xs text-slate-400 flex flex-wrap gap-3">
                                 ${tieneTarjeta ? `<span><i class="fa-solid fa-credit-card text-amber-400"></i> Tarjeta: <strong class="text-amber-300">${esc(item.cardAlias)}</strong></span>` : ''}
-                                ${tieneFecha ? `<span><i class="fa-regular fa-calendar text-teal-400"></i> Vence: <strong class="text-teal-300">${esc(item.dueDate)}</strong></span>` : ''}
+                                ${fecha ? `<span><i class="fa-regular fa-calendar text-teal-400"></i> ${cuotasOn && !paid ? 'Próxima cuota vence' : 'Vence'}: <strong class="text-teal-300">${esc(fecha)}</strong></span>` : ''}
                             </div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between w-full md:w-auto gap-4 border-t md:border-t-0 pt-2 md:pt-0 border-slate-700/50">
-                        <span class="text-lg font-black ${paid ? 'text-slate-400' : 'text-emerald-400'}">${money(item.amount)}</span>
+                        <div>
+                            <span class="block text-lg font-black text-right ${paid ? 'text-slate-400' : 'text-emerald-400'}">${money(montoPrincipal)}</span>
+                            ${montoSub}
+                        </div>
                         <div class="flex items-center gap-1">
-                            <button onclick="togglePaid('${esc(item.id)}')" class="${paid ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' : 'text-slate-300 hover:text-emerald-300 hover:bg-emerald-500/10'} px-2.5 py-2 rounded-lg transition text-xs font-semibold flex items-center gap-1.5" title="${paid ? 'Marcar como sin pagar' : 'Marcar como pagado'}">
-                                <i class="fa-solid ${paid ? 'fa-circle-check' : 'fa-circle'}"></i> ${paid ? 'Pagado' : 'Pagar'}
-                            </button>
-                            ${tieneFecha ? `
+                            ${botonPago}
+                            ${fecha ? `
                             <a href="${esc(calUrl)}" target="_blank" rel="noopener" title="Agregar a Google Calendar" class="bg-teal-600/30 hover:bg-teal-600 text-teal-300 hover:text-white p-2 rounded-lg transition text-xs">
                                 <i class="fa-solid fa-calendar-plus"></i>
                             </a>` : ''}
@@ -579,18 +669,19 @@
 
         window.exportToExcel = function() {
             const datos = getFiltered();
-            if (datos.length === 0) {
-                alert("No hay datos para exportar.");
-                return;
-            }
+            if (datos.length === 0) { alert("No hay datos para exportar."); return; }
             const dataToExport = datos.map(item => ({
                 "Descripción": item.desc,
                 "Logo": item.logoName || "",
-                "Monto ($)": item.amount,
+                "Monto total ($)": item.amount,
+                "Cuotas": nCuotas(item),
+                "Valor de cuota ($)": round2(valorCuota(item)),
+                "Cuotas pagas": pagadas(item),
+                "Falta pagar ($)": round2(restante(item)),
                 "Estado": item.paid ? "Pagado" : "Sin pagar",
                 "Forma de Pago": item.method,
                 "Alias de Tarjeta": item.cardAlias || "",
-                "Fecha de Vencimiento": item.dueDate || "",
+                "Próximo vencimiento": proxVenc(item) || "",
                 "Fecha de Registro": item.createdAt ? item.createdAt.substring(0, 10) : ""
             }));
             const ws = XLSX.utils.json_to_sheet(dataToExport);
