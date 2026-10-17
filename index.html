@@ -35,12 +35,12 @@
     </header>
 
     <main class="max-w-5xl mx-auto px-4 space-y-6">
-        
+
         <!-- ESTADÍSTICAS RÁPIDAS -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="glass-card p-4 rounded-2xl border-l-4 border-teal-400">
                 <p class="text-xs text-slate-400 font-medium">Total Gastos Registrados</p>
-                <h3 id="statTotal" class="text-2xl font-black text-white mt-1">\$0.00</h3>
+                <h3 id="statTotal" class="text-2xl font-black text-white mt-1">$0.00</h3>
             </div>
             <div class="glass-card p-4 rounded-2xl border-l-4 border-amber-400">
                 <p class="text-xs text-slate-400 font-medium">Próximos Vencimientos</p>
@@ -48,7 +48,7 @@
             </div>
             <div class="glass-card p-4 rounded-2xl border-l-4 border-emerald-400">
                 <p class="text-xs text-slate-400 font-medium">Estado Nube</p>
-                <h3 id="statSync" class="text-sm font-bold text-emerald-400 mt-2">Sincronizado</h3>
+                <h3 id="statSync" class="text-sm font-bold text-emerald-400 mt-2">Conectando...</h3>
             </div>
         </div>
 
@@ -63,7 +63,7 @@
                     <input type="text" id="desc" required placeholder="Ej: Supermercado / Luz" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-300 mb-1">Monto (\$)</label>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Monto ($)</label>
                     <input type="number" step="0.01" id="amount" required placeholder="0.00" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white">
                 </div>
                 <div>
@@ -112,7 +112,7 @@
         import { getFirestore, collection, onSnapshot, addDoc, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
-            apiKey: "AIzaSyAXqG0SaBCS8bN42mQG8VcayYJuGzdXfM",
+            apiKey: "AIzaSyAXqG0SaBCS8bN42mQG8VcayYJuQGzdXfM",
             authDomain: "tri-gastos.firebaseapp.com",
             projectId: "tri-gastos",
             storageBucket: "tri-gastos.firebasestorage.app",
@@ -120,11 +120,16 @@
             appId: "1:843976544023:web:569c6e5ad2d3c2dc24f152"
         };
 
+        const COLECCION = "tri_gastos_global"; // las reglas de Firestore deben permitir ESTA colección
+
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app, "(default)");
-        const expensesCol = collection(db, "tri_gastos_global");
+        const db = getFirestore(app);
+        const expensesCol = collection(db, COLECCION);
 
         let currentExpenses = [];
+
+        const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const money = (n) => '$' + (Number(n) || 0).toLocaleString('es-AR', {minimumFractionDigits: 2});
 
         // Conexión en tiempo real
         onSnapshot(expensesCol, (snapshot) => {
@@ -135,16 +140,18 @@
             currentExpenses = [];
             snapshot.forEach(docSnap => {
                 const data = docSnap.data();
-                if (data.desc) { // Ignorar documento de prueba si lo hubiera
-                    currentExpenses.push({ id: docSnap.id, ...data });
-                }
+                if (data.desc) currentExpenses.push({ id: docSnap.id, ...data });
             });
             renderExpenses();
         }, (error) => {
             console.error("Firestore Error:", error);
-            document.getElementById('statusBadge').innerText = "🔴 Desconectado";
+            document.getElementById('statusBadge').innerText = "🔴 Error: " + error.code;
             document.getElementById('statusBadge').className = "text-xs text-rose-400 font-medium";
-            document.getElementById('statSync').innerText = "Error de Red";
+            document.getElementById('statSync').innerText = error.code === 'permission-denied'
+                ? "Revisar reglas de Firestore"
+                : (error.message || "Error de red");
+            document.getElementById('expenseList').innerHTML =
+                `<div class="text-center py-8 text-rose-300 text-sm">No se pudo leer la base: ${esc(error.code)}. Mirá la consola (F12) para más detalle.</div>`;
         });
 
         window.toggleCardOptions = function() {
@@ -161,10 +168,10 @@
 
         window.saveExpense = async function(e) {
             e.preventDefault();
-            const desc = document.getElementById('desc').value;
+            const desc = document.getElementById('desc').value.trim();
             const amount = parseFloat(document.getElementById('amount').value);
             const method = document.getElementById('paymentMethod').value;
-            const cardAlias = document.getElementById('cardAlias').value;
+            const cardAlias = document.getElementById('cardAlias').value.trim();
             const dueDate = document.getElementById('dueDate').value;
 
             const expenseData = {
@@ -181,16 +188,16 @@
                 document.getElementById('expenseForm').reset();
                 window.toggleCardOptions();
             } catch (err) {
-                alert("Error al guardar en la nube: " + err.message);
+                alert("Error al guardar en la nube (" + err.code + "): " + err.message);
             }
         };
 
         window.deleteExpense = async function(id) {
             if (confirm("¿Estás seguro de eliminar este gasto?")) {
                 try {
-                    await deleteDoc(doc(db, "tri_gastos_global", id));
+                    await deleteDoc(doc(db, COLECCION, id));
                 } catch (err) {
-                    alert("Error al eliminar: " + err.message);
+                    alert("Error al eliminar (" + err.code + "): " + err.message);
                 }
             }
         };
@@ -198,55 +205,65 @@
         function renderExpenses() {
             const list = document.getElementById('expenseList');
             document.getElementById('counterBadge').innerText = `${currentExpenses.length} registros`;
-            
-            let total = currentExpenses.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
-            document.getElementById('statTotal').innerText = `$${total.toLocaleString('es-AR', {minimumFractionDigits: 2})}`;
 
-            // Contar próximos vencimientos (próximos 7 días)
+            const total = currentExpenses.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+            document.getElementById('statTotal').innerText = money(total);
+
+            // Próximos vencimientos (hoy y los siguientes 7 días)
             const today = new Date();
-            let pendingCount = currentExpenses.filter(item => {
+            today.setHours(0, 0, 0, 0);
+            const pendingCount = currentExpenses.filter(item => {
                 if (!item.dueDate || item.dueDate === 'Sin fecha') return false;
                 const due = new Date(item.dueDate + 'T00:00:00');
-                const diffTime = due - today;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const diffDays = Math.round((due - today) / (1000 * 60 * 60 * 24));
                 return diffDays >= 0 && diffDays <= 7;
             }).length;
             document.getElementById('statPending').innerText = pendingCount;
 
             if (currentExpenses.length === 0) {
-                list.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No hay gastos registrados todavía. ¡Agrega el primero arriba!</div>`;
+                list.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No hay gastos registrados todavía. ¡Agregá el primero arriba!</div>`;
                 return;
             }
 
-            // Ordenar por fecha de creación descendente
             currentExpenses.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-            list.innerHTML = currentExpenses.map(item => `
+            list.innerHTML = currentExpenses.map(item => {
+                const tieneTarjeta = item.cardAlias && item.cardAlias !== 'N/A';
+                const tieneFecha = item.dueDate && item.dueDate !== 'Sin fecha';
+                const fechaCal = tieneFecha ? item.dueDate.replace(/-/g, '') : '';
+                const calUrl = tieneFecha
+                    ? 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+                      + '&text=' + encodeURIComponent('Vencimiento: ' + item.desc)
+                      + '&details=' + encodeURIComponent('Monto: $' + item.amount + ' - Tarjeta: ' + (item.cardAlias || ''))
+                      + '&dates=' + fechaCal + '/' + fechaCal
+                    : '';
+
+                return `
                 <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 transition hover:border-teal-500/40">
                     <div class="space-y-1">
                         <div class="flex items-center gap-2">
-                            <h3 class="font-bold text-white text-base">${item.desc}</h3>
-                            <span class="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-md">${item.method}</span>
+                            <h3 class="font-bold text-white text-base">${esc(item.desc)}</h3>
+                            <span class="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-md">${esc(item.method)}</span>
                         </div>
                         <div class="text-xs text-slate-400 flex flex-wrap gap-3">
-                            ${item.cardAlias && item.cardAlias !== 'N/A' ? `<span><i class="fa-solid fa-credit-card text-amber-400"></i> Tarjeta: <strong class="text-amber-300">\${item.cardAlias}</strong></span>` : ''}
-                            ${item.dueDate && item.dueDate !== 'Sin fecha' ? `<span><i class="fa-regular fa-calendar text-teal-400"></i> Vence: <strong class="text-teal-300">\${item.dueDate}</strong></span>` : ''}
+                            ${tieneTarjeta ? `<span><i class="fa-solid fa-credit-card text-amber-400"></i> Tarjeta: <strong class="text-amber-300">${esc(item.cardAlias)}</strong></span>` : ''}
+                            ${tieneFecha ? `<span><i class="fa-regular fa-calendar text-teal-400"></i> Vence: <strong class="text-teal-300">${esc(item.dueDate)}</strong></span>` : ''}
                         </div>
                     </div>
                     <div class="flex items-center justify-between w-full md:w-auto gap-4 border-t md:border-t-0 pt-2 md:pt-0 border-slate-700/50">
-                        <span class="text-lg font-black text-emerald-400">$${Number(item.amount).toLocaleString('es-AR', {minimumFractionDigits: 2})}</span>
+                        <span class="text-lg font-black text-emerald-400">${money(item.amount)}</span>
                         <div class="flex items-center gap-1">
-                            ${item.dueDate && item.dueDate !== 'Sin fecha' ? `
-                            <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=\${encodeURIComponent('Vencimiento: ' + item.desc)}&details=${encodeURIComponent('Monto:$' + item.amount + ' - Tarjeta: ' + item.cardAlias)}&dates=${item.dueDate.replace(/-/g, '')}/${item.dueDate.replace(/-/g, '')}" target="_blank" title="Agregar a Google Calendar" class="bg-teal-600/30 hover:bg-teal-600 text-teal-300 hover:text-white p-2 rounded-lg transition text-xs">
+                            ${tieneFecha ? `
+                            <a href="${esc(calUrl)}" target="_blank" rel="noopener" title="Agregar a Google Calendar" class="bg-teal-600/30 hover:bg-teal-600 text-teal-300 hover:text-white p-2 rounded-lg transition text-xs">
                                 <i class="fa-solid fa-calendar-plus"></i>
                             </a>` : ''}
-                            <button onclick="deleteExpense('${item.id}')" class="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 p-2 rounded-lg transition" title="Eliminar">
+                            <button onclick="deleteExpense('${esc(item.id)}')" class="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 p-2 rounded-lg transition" title="Eliminar">
                                 <i class="fa-solid fa-trash"></i>
                             </button>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
 
         window.exportToExcel = function() {
@@ -256,7 +273,7 @@
             }
             const dataToExport = currentExpenses.map(item => ({
                 "Descripción": item.desc,
-                "Monto (\$)": item.amount,
+                "Monto ($)": item.amount,
                 "Forma de Pago": item.method,
                 "Alias de Tarjeta": item.cardAlias || "",
                 "Fecha de Vencimiento": item.dueDate || "",
