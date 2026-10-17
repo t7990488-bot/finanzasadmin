@@ -40,7 +40,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="glass-card p-4 rounded-2xl border-l-4 border-teal-400">
                 <p class="text-xs text-slate-400 font-medium">Total Gastos Registrados</p>
-                <h3 id="statTotal" class="text-2xl font-black text-white mt-1">$0.00</h3>
+                <h3 id="statTotal" class="text-2xl font-black text-white mt-1">$0,00</h3>
             </div>
             <div class="glass-card p-4 rounded-2xl border-l-4 border-amber-400">
                 <p class="text-xs text-slate-400 font-medium">Próximos Vencimientos</p>
@@ -63,8 +63,8 @@
                     <input type="text" id="desc" required placeholder="Ej: Supermercado / Luz" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-slate-300 mb-1">Monto ($)</label>
-                    <input type="number" step="0.01" id="amount" required placeholder="0.00" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white">
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Monto</label>
+                    <input type="text" id="amount" inputmode="decimal" autocomplete="off" required placeholder="$ 0" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">Forma de Pago</label>
@@ -73,6 +73,18 @@
                         <option value="Tarjeta de Débito">Tarjeta de Débito</option>
                         <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
                     </select>
+                </div>
+
+                <div class="col-span-1 md:col-span-2 lg:col-span-3">
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Logo (opcional)</label>
+                    <div class="flex gap-2">
+                        <select id="logoSelect" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-400 text-white">
+                            <option value="">Sin logo</option>
+                        </select>
+                        <button type="button" onclick="toggleLogoPanel()" class="bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-2 rounded-lg flex items-center gap-2 transition">
+                            <i class="fa-solid fa-image"></i> Mis logos
+                        </button>
+                    </div>
                 </div>
 
                 <div id="cardDetails" class="hidden col-span-1 md:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-800/60 p-3.5 rounded-xl border border-slate-700">
@@ -92,6 +104,31 @@
                     </button>
                 </div>
             </form>
+
+            <!-- PANEL DE LOGOS -->
+            <div id="logoPanel" class="hidden mt-4 bg-slate-800/60 p-4 rounded-xl border border-slate-700 space-y-4">
+                <h3 class="text-sm font-semibold text-amber-300 flex items-center gap-2">
+                    <i class="fa-solid fa-images"></i> Mis logos
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Nombre del logo</label>
+                        <input type="text" id="logoName" placeholder="Ej: Netflix / Edenor" onkeydown="if(event.key==='Enter'){event.preventDefault();saveLogo();}" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400 text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Imagen</label>
+                        <input type="file" id="logoFile" accept="image/*" class="w-full text-xs text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-700 file:text-white file:px-3 file:py-2 file:text-xs file:cursor-pointer">
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <img id="logoPreview" alt="" class="hidden w-10 h-10 rounded-lg object-contain bg-slate-900 p-1">
+                        <button type="button" onclick="saveLogo()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm px-4 py-2 rounded-lg transition flex items-center gap-2">
+                            <i class="fa-solid fa-plus"></i> Guardar logo
+                        </button>
+                    </div>
+                </div>
+                <p id="logoMsg" class="text-xs text-slate-400 min-h-[1rem]"></p>
+                <div id="logoList" class="flex flex-wrap gap-2"></div>
+            </div>
         </section>
 
         <!-- LISTA DE GASTOS -->
@@ -120,22 +157,159 @@
             appId: "1:843976544023:web:569c6e5ad2d3c2dc24f152"
         };
 
-        const COLECCION = "tri_gastos_global"; // las reglas de Firestore deben permitir ESTA colección
+        const COLECCION = "tri_gastos_global";
+        const COLECCION_LOGOS = "tri_logos";
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const expensesCol = collection(db, COLECCION);
+        const logosCol = collection(db, COLECCION_LOGOS);
 
         let currentExpenses = [];
+        let logos = [];
+        let pendingLogoId = null;
 
+        const $ = (id) => document.getElementById(id);
         const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
         const money = (n) => '$' + (Number(n) || 0).toLocaleString('es-AR', {minimumFractionDigits: 2});
 
-        // Conexión en tiempo real
+        // ---------- MONTO CON FORMATO AUTOMÁTICO ($ 1.234,56) ----------
+        function formatAmountInput(el) {
+            const raw = el.value;
+            const caret = el.selectionStart ?? raw.length;
+            const before = raw.slice(0, caret).replace(/[^0-9,]/g, '').length;
+
+            const clean = raw.replace(/[^0-9,]/g, '');
+            const idx = clean.indexOf(',');
+            let int = idx === -1 ? clean : clean.slice(0, idx);
+            const dec = idx === -1 ? null : clean.slice(idx + 1).replace(/,/g, '').slice(0, 2);
+
+            int = int.replace(/^0+(?=\d)/, '');
+            const intFmt = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            const out = clean === '' ? '' : '$ ' + (intFmt || '0') + (dec !== null ? ',' + dec : '');
+            el.value = out;
+
+            let pos = out.length;
+            if (before === 0) {
+                pos = out ? 2 : 0;
+            } else {
+                let count = 0;
+                for (let i = 0; i < out.length; i++) {
+                    if (/[0-9,]/.test(out[i])) count++;
+                    if (count === before) { pos = i + 1; break; }
+                }
+            }
+            try { el.setSelectionRange(pos, pos); } catch (e) {}
+        }
+        const parseAmount = (s) => parseFloat(String(s).replace(/[^0-9,]/g, '').replace(',', '.'));
+        $('amount').addEventListener('input', (e) => formatAmountInput(e.target));
+
+        // ---------- LOGOS ----------
+        window.toggleLogoPanel = function() { $('logoPanel').classList.toggle('hidden'); };
+
+        $('logoFile').addEventListener('change', () => {
+            const file = $('logoFile').files[0];
+            const prev = $('logoPreview');
+            if (!file) { prev.classList.add('hidden'); return; }
+            prev.src = URL.createObjectURL(file);
+            prev.classList.remove('hidden');
+        });
+
+        // Reduce la imagen a 96x96 para guardarla chiquita dentro de Firestore (no necesita Storage)
+        function fileToLogo(file) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    const S = 96;
+                    const c = document.createElement('canvas');
+                    c.width = S; c.height = S;
+                    const ctx = c.getContext('2d');
+                    const r = Math.min(S / img.width, S / img.height);
+                    const w = img.width * r, h = img.height * r;
+                    ctx.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);
+                    URL.revokeObjectURL(url);
+                    resolve(c.toDataURL('image/webp', 0.85));
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen')); };
+                img.src = url;
+            });
+        }
+
+        window.saveLogo = async function() {
+            const name = $('logoName').value.trim();
+            const file = $('logoFile').files[0];
+            if (!name) { $('logoMsg').innerText = 'Escribí un nombre para el logo.'; return; }
+            if (!file) { $('logoMsg').innerText = 'Elegí una imagen para el logo.'; return; }
+            try {
+                $('logoMsg').innerText = 'Guardando logo...';
+                const img = await fileToLogo(file);
+                const ref = await addDoc(logosCol, { name, img, createdAt: new Date().toISOString() });
+                pendingLogoId = ref.id;
+                $('logoName').value = '';
+                $('logoFile').value = '';
+                $('logoPreview').classList.add('hidden');
+                $('logoMsg').innerText = 'Logo guardado y seleccionado para el próximo gasto.';
+            } catch (err) {
+                $('logoMsg').innerText = 'No se pudo guardar el logo (' + (err.code || err.message) + ').';
+            }
+        };
+
+        window.deleteLogo = async function(id) {
+            if (!confirm('¿Eliminar este logo? Los gastos anteriores conservan el nombre.')) return;
+            try { await deleteDoc(doc(db, COLECCION_LOGOS, id)); }
+            catch (err) { alert('Error al eliminar el logo (' + err.code + '): ' + err.message); }
+        };
+
+        function renderLogoSelect() {
+            const sel = $('logoSelect');
+            const actual = pendingLogoId || sel.value;
+            sel.innerHTML = '<option value="">Sin logo</option>' +
+                logos.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
+            if (logos.some(l => l.id === actual)) {
+                sel.value = actual;
+                if (actual === pendingLogoId) pendingLogoId = null;
+            }
+        }
+
+        function renderLogoList() {
+            const box = $('logoList');
+            if (logos.length === 0) {
+                box.innerHTML = '<span class="text-xs text-slate-500">Todavía no cargaste logos.</span>';
+                return;
+            }
+            box.innerHTML = logos.map(l => `
+                <div class="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg pl-2 pr-1 py-1">
+                    <img src="${esc(l.img)}" alt="" class="w-7 h-7 object-contain">
+                    <span class="text-xs text-slate-200">${esc(l.name)}</span>
+                    <button type="button" onclick="deleteLogo('${esc(l.id)}')" class="text-rose-400 hover:text-rose-300 p-1.5 rounded transition" title="Eliminar logo">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>`).join('');
+        }
+
+        onSnapshot(logosCol, (snapshot) => {
+            logos = [];
+            snapshot.forEach(d => {
+                const x = d.data();
+                if (x.name && typeof x.img === 'string' && x.img.startsWith('data:image/')) logos.push({ id: d.id, ...x });
+            });
+            logos.sort((a, b) => a.name.localeCompare(b.name, 'es'));
+            renderLogoSelect();
+            renderLogoList();
+            renderExpenses();
+        }, (error) => {
+            console.error("Firestore (logos) Error:", error);
+            $('logoMsg').innerText = error.code === 'permission-denied'
+                ? 'Falta publicar la regla de la colección tri_logos en Firestore.'
+                : 'No se pudieron leer los logos (' + error.code + ').';
+        });
+
+        // ---------- GASTOS ----------
         onSnapshot(expensesCol, (snapshot) => {
-            document.getElementById('statusBadge').innerText = "🟢 Nube Conectada";
-            document.getElementById('statusBadge').className = "text-xs text-emerald-400 font-medium";
-            document.getElementById('statSync').innerText = "Sincronizado";
+            $('statusBadge').innerText = "🟢 Nube Conectada";
+            $('statusBadge').className = "text-xs text-emerald-400 font-medium";
+            $('statSync').innerText = "Sincronizado";
 
             currentExpenses = [];
             snapshot.forEach(docSnap => {
@@ -145,34 +319,38 @@
             renderExpenses();
         }, (error) => {
             console.error("Firestore Error:", error);
-            document.getElementById('statusBadge').innerText = "🔴 Error: " + error.code;
-            document.getElementById('statusBadge').className = "text-xs text-rose-400 font-medium";
-            document.getElementById('statSync').innerText = error.code === 'permission-denied'
+            $('statusBadge').innerText = "🔴 Error: " + error.code;
+            $('statusBadge').className = "text-xs text-rose-400 font-medium";
+            $('statSync').innerText = error.code === 'permission-denied'
                 ? "Revisar reglas de Firestore"
                 : (error.message || "Error de red");
-            document.getElementById('expenseList').innerHTML =
+            $('expenseList').innerHTML =
                 `<div class="text-center py-8 text-rose-300 text-sm">No se pudo leer la base: ${esc(error.code)}. Mirá la consola (F12) para más detalle.</div>`;
         });
 
         window.toggleCardOptions = function() {
-            const method = document.getElementById('paymentMethod').value;
-            const cardDetails = document.getElementById('cardDetails');
+            const method = $('paymentMethod').value;
+            const cardDetails = $('cardDetails');
             if (method.includes('Tarjeta')) {
                 cardDetails.classList.remove('hidden');
             } else {
                 cardDetails.classList.add('hidden');
-                document.getElementById('cardAlias').value = '';
-                document.getElementById('dueDate').value = '';
+                $('cardAlias').value = '';
+                $('dueDate').value = '';
             }
         };
 
         window.saveExpense = async function(e) {
             e.preventDefault();
-            const desc = document.getElementById('desc').value.trim();
-            const amount = parseFloat(document.getElementById('amount').value);
-            const method = document.getElementById('paymentMethod').value;
-            const cardAlias = document.getElementById('cardAlias').value.trim();
-            const dueDate = document.getElementById('dueDate').value;
+            const desc = $('desc').value.trim();
+            const amount = parseAmount($('amount').value);
+            const method = $('paymentMethod').value;
+            const cardAlias = $('cardAlias').value.trim();
+            const dueDate = $('dueDate').value;
+            const logoId = $('logoSelect').value;
+            const logo = logos.find(l => l.id === logoId);
+
+            if (!(amount >= 0)) { alert("Ingresá un monto válido."); return; }
 
             const expenseData = {
                 desc,
@@ -180,12 +358,14 @@
                 method,
                 cardAlias: method.includes('Tarjeta') ? cardAlias : 'N/A',
                 dueDate: dueDate || 'Sin fecha',
+                logoId: logo ? logo.id : '',
+                logoName: logo ? logo.name : '',
                 createdAt: new Date().toISOString()
             };
 
             try {
                 await addDoc(expensesCol, expenseData);
-                document.getElementById('expenseForm').reset();
+                $('expenseForm').reset();
                 window.toggleCardOptions();
             } catch (err) {
                 alert("Error al guardar en la nube (" + err.code + "): " + err.message);
@@ -202,14 +382,21 @@
             }
         };
 
+        function logoBadge(item) {
+            const l = logos.find(x => x.id === item.logoId);
+            if (l) return `<img src="${esc(l.img)}" alt="${esc(l.name)}" title="${esc(l.name)}" class="w-11 h-11 rounded-lg object-contain bg-slate-900/70 p-1 shrink-0">`;
+            if (item.logoName) return `<div title="${esc(item.logoName)}" class="w-11 h-11 rounded-lg bg-slate-700 text-slate-200 font-bold flex items-center justify-center shrink-0">${esc(item.logoName.charAt(0).toUpperCase())}</div>`;
+            return '';
+        }
+
         function renderExpenses() {
-            const list = document.getElementById('expenseList');
-            document.getElementById('counterBadge').innerText = `${currentExpenses.length} registros`;
+            const list = $('expenseList');
+            if (!list) return;
+            $('counterBadge').innerText = `${currentExpenses.length} registros`;
 
             const total = currentExpenses.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
-            document.getElementById('statTotal').innerText = money(total);
+            $('statTotal').innerText = money(total);
 
-            // Próximos vencimientos (hoy y los siguientes 7 días)
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const pendingCount = currentExpenses.filter(item => {
@@ -218,7 +405,7 @@
                 const diffDays = Math.round((due - today) / (1000 * 60 * 60 * 24));
                 return diffDays >= 0 && diffDays <= 7;
             }).length;
-            document.getElementById('statPending').innerText = pendingCount;
+            $('statPending').innerText = pendingCount;
 
             if (currentExpenses.length === 0) {
                 list.innerHTML = `<div class="text-center py-8 text-slate-400 text-sm">No hay gastos registrados todavía. ¡Agregá el primero arriba!</div>`;
@@ -234,20 +421,23 @@
                 const calUrl = tieneFecha
                     ? 'https://calendar.google.com/calendar/render?action=TEMPLATE'
                       + '&text=' + encodeURIComponent('Vencimiento: ' + item.desc)
-                      + '&details=' + encodeURIComponent('Monto: $' + item.amount + ' - Tarjeta: ' + (item.cardAlias || ''))
+                      + '&details=' + encodeURIComponent('Monto: ' + money(item.amount) + ' - Tarjeta: ' + (item.cardAlias || ''))
                       + '&dates=' + fechaCal + '/' + fechaCal
                     : '';
 
                 return `
                 <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 transition hover:border-teal-500/40">
-                    <div class="space-y-1">
-                        <div class="flex items-center gap-2">
-                            <h3 class="font-bold text-white text-base">${esc(item.desc)}</h3>
-                            <span class="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-md">${esc(item.method)}</span>
-                        </div>
-                        <div class="text-xs text-slate-400 flex flex-wrap gap-3">
-                            ${tieneTarjeta ? `<span><i class="fa-solid fa-credit-card text-amber-400"></i> Tarjeta: <strong class="text-amber-300">${esc(item.cardAlias)}</strong></span>` : ''}
-                            ${tieneFecha ? `<span><i class="fa-regular fa-calendar text-teal-400"></i> Vence: <strong class="text-teal-300">${esc(item.dueDate)}</strong></span>` : ''}
+                    <div class="flex items-center gap-3">
+                        ${logoBadge(item)}
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <h3 class="font-bold text-white text-base">${esc(item.desc)}</h3>
+                                <span class="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded-md">${esc(item.method)}</span>
+                            </div>
+                            <div class="text-xs text-slate-400 flex flex-wrap gap-3">
+                                ${tieneTarjeta ? `<span><i class="fa-solid fa-credit-card text-amber-400"></i> Tarjeta: <strong class="text-amber-300">${esc(item.cardAlias)}</strong></span>` : ''}
+                                ${tieneFecha ? `<span><i class="fa-regular fa-calendar text-teal-400"></i> Vence: <strong class="text-teal-300">${esc(item.dueDate)}</strong></span>` : ''}
+                            </div>
                         </div>
                     </div>
                     <div class="flex items-center justify-between w-full md:w-auto gap-4 border-t md:border-t-0 pt-2 md:pt-0 border-slate-700/50">
@@ -273,6 +463,7 @@
             }
             const dataToExport = currentExpenses.map(item => ({
                 "Descripción": item.desc,
+                "Logo": item.logoName || "",
                 "Monto ($)": item.amount,
                 "Forma de Pago": item.method,
                 "Alias de Tarjeta": item.cardAlias || "",
