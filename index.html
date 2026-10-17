@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRI - Control de Gastos & Vencimientos</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS for Excel (.xlsx) Export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        heading: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        tri: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            800: '#115e59',
+                            900: '#134e4a',
+                            navy: '#0b132b',
+                            card: '#1e293b',
+                            border: '#334155'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b132b;
+            color: #f1f5f9;
+        }
+        h1, h2, h3, h4, .font-heading {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #0d9488;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-header {
+            background: rgba(11, 19, 43, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #2dd4bf 0%, #38bdf8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .glow-teal {
+            box-shadow: 0 0 20px -3px rgba(45, 212, 191, 0.25);
+        }
+    </style>
+</head>
+<body class="min-h-full flex flex-col antialiased selection:bg-tri-500 selection:text-white">
+
+    <!-- Header & TRI Brand Bar -->
+    <header class="glass-header sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-3">
+                <div class="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-tr from-tri-600 via-tri-500 to-sky-400 text-white font-extrabold text-xl shadow-lg shadow-tri-500/20 ring-1 ring-white/20">
+                    <span class="tracking-tighter font-heading">TRI</span>
+                    <div class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 rounded-full border-2 border-tri-navy"></div>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl font-black tracking-wider text-white font-heading">TRI</span>
+                        <span class="text-xs px-2 py-0.5 rounded-md bg-tri-500/20 text-tri-400 font-semibold border border-tri-500/30 uppercase">Finance Pro</span>
+                    </div>
+                    <p class="text-xs text-slate-400">Gestor Ejecutivo de Gastos y Vencimientos</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons Header -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button onclick="exportToExcel()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs sm:text-sm font-semibold transition-all active:scale-95 shadow-sm">
+                    <i class="fa-solid fa-file-excel text-base"></i>
+                    <span class="hidden sm:inline">Exportar Excel</span>
+                    <span class="sm:hidden">Excel</span>
+                </button>
+                <button onclick="openModal()" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-tri-600 to-tri-500 hover:from-tri-500 hover:to-tri-400 text-white text-xs sm:text-sm font-bold shadow-lg shadow-tri-500/20 transition-all active:scale-95 glow-teal">
+                    <i class="fa-solid fa-plus text-sm"></i>
+                    <span>Añadir Gasto</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Body -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Executive Dashboard KPI Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Total Gastos -->
+            <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
+                <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-tri-500/10 rounded-full blur-xl group-hover:bg-tri-500/20 transition-all"></div>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Gastado</p>
+                        <h3 id="statTotal" class="text-2xl font-black text-white mt-1 font-heading">$0,00</h3>
+                    </div>
+                    <div class="p-3 bg-tri-500/15 text-tri-400 rounded-xl border border-tri-500/20">
+                        <i class="fa-solid fa-wallet text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Tarjetas de Crédito -->
+            <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
+                <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-purple-500/10 rounded-full blur-xl group-hover:bg-purple-500/20 transition-all"></div>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Consumo Tarjetas</p>
+                        <h3 id="statCredit" class="text-2xl font-black text-purple-300 mt-1 font-heading">$0,00</h3>
+                    </div>
+                    <div class="p-3 bg-purple-500/15 text-purple-400 rounded-xl border border-purple-500/20">
+                        <i class="fa-solid fa-credit-card text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vencimientos Pendientes (Próximos) -->
+            <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
+                <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition-all"></div>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Por Vencer (7 días)</p>
+                        <h3 id="statPending" class="text-2xl font-black text-amber-400 mt-1 font-heading">0</h3>
+                    </div>
+                    <div class="p-3 bg-amber-500/15 text-amber-400 rounded-xl border border-amber-500/20">
+                        <i class="fa-solid fa-clock text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Pagados -->
+            <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
+                <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition-all"></div>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Pagados / Saldados</p>
+                        <h3 id="statPaid" class="text-2xl font-black text-emerald-400 mt-1 font-heading">$0,00</h3>
+                    </div>
+                    <div class="p-3 bg-emerald-500/15 text-emerald-400 rounded-xl border border-emerald-500/20">
+                        <i class="fa-solid fa-circle-check text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filters & Search Toolbar -->
+        <section class="glass-panel p-4 rounded-2xl flex flex-col md:flex-row gap-3 items-center justify-between">
+            <div class="relative w-full md:w-80">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
+                <input type="text" id="searchInput" oninput="renderExpenses()" placeholder="Buscar gasto, tarjeta o detalle..." class="w-full pl-9 pr-4 py-2 text-xs sm:text-sm bg-slate-900/60 border border-slate-700/80 rounded-xl text-slate-200 placeholder-slate-500 focus:outline-none focus:border-tri-500 focus:ring-1 focus:ring-tri-500 transition-all">
+            </div>
+
+            <div class="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                <!-- Status Filter -->
+                <select id="filterStatus" onchange="renderExpenses()" class="px-3 py-2 text-xs bg-slate-900/60 border border-slate-700/80 rounded-xl text-slate-300 focus:outline-none focus:border-tri-500">
+                    <option value="ALL">Todos los Estados</option>
+                    <option value="PENDING">Pendientes</option>
+                    <option value="PAID">Pagados</option>
+                </select>
+
+                <!-- Payment Method Filter -->
+                <select id="filterPayment" onchange="renderExpenses()" class="px-3 py-2 text-xs bg-slate-900/60 border border-slate-700/80 rounded-xl text-slate-300 focus:outline-none focus:border-tri-500">
+                    <option value="ALL">Todas las Formas de Pago</option>
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Transferencia">Transferencia</option>
+                    <option value="Débito">Débito</option>
+                    <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+                    <option value="Cripto">Cripto</option>
+                </select>
+
+                <!-- Month Filter -->
+                <input type="month" id="filterMonth" onchange="renderExpenses()" class="px-3 py-2 text-xs bg-slate-900/60 border border-slate-700/80 rounded-xl text-slate-300 focus:outline-none focus:border-tri-500">
+
+                <button onclick="clearFilters()" title="Limpiar Filtros" class="px-3 py-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors border border-slate-700">
+                    <i class="fa-solid fa-filter-circle-xmark"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- Expenses List Grid / Cards Container -->
+        <section class="space-y-4">
+            <div class="flex items-center justify-between px-1">
+                <h2 class="text-lg font-bold text-white font-heading flex items-center gap-2">
+                    <i class="fa-solid fa-receipt text-tri-400"></i>
+                    <span>Listado de Gastos Registrados</span>
+                </h2>
+                <span id="recordCount" class="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 font-semibold border border-slate-700">0 registros</span>
+            </div>
+
+            <!-- Table Container (Desktop) -->
+            <div class="hidden md:block glass-panel rounded-2xl overflow-hidden border border-slate-800">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-900/80 border-b border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            <th class="py-3.5 px-4">Referencia / Concepto</th>
+                            <th class="py-3.5 px-4">Pago / Tarjeta</th>
+                            <th class="py-3.5 px-4">Fechas & Vencimiento</th>
+                            <th class="py-3.5 px-4 text-right">Monto</th>
+                            <th class="py-3.5 px-4 text-center">Estado</th>
+                            <th class="py-3.5 px-4 text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expenseTableBody" class="divide-y divide-slate-800/60 text-sm">
+                        <!-- Dynamic content loaded via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Cards Layout Container (Mobile View) -->
+            <div id="expenseMobileContainer" class="md:hidden grid grid-cols-1 gap-3">
+                <!-- Mobile Cards dynamically loaded -->
+            </div>
+
+            <!-- Empty State Display -->
+            <div id="emptyState" class="hidden glass-panel text-center py-16 px-4 rounded-2xl border border-slate-800">
+                <div class="inline-flex p-4 rounded-2xl bg-slate-800/80 text-slate-500 mb-4 border border-slate-700">
+                    <i class="fa-regular fa-folder-open text-4xl"></i>
+                </div>
+                <h3 class="text-base font-bold text-white font-heading">No se encontraron gastos registrados</h3>
+                <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Haz clic en "Añadir Gasto" para registrar tus comprobantes, comprobantes de tarjetas o vencimientos de servicios.</p>
+                <button onclick="openModal()" class="mt-4 px-4 py-2 bg-tri-600 hover:bg-tri-500 text-white text-xs font-bold rounded-xl transition-all inline-flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Cargar Primer Gasto</span>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal Form (Añadir / Editar Gasto) -->
+    <div id="expenseModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md opacity-0 pointer-events-none transition-all duration-200">
+        <div class="bg-slate-900 border border-slate-700/80 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-all duration-200" id="modalContent">
+            
+            <!-- Modal Header -->
+            <div class="px-6 py-4 bg-slate-800/90 border-b border-slate-700/80 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-tri-500/20 text-tri-400 flex items-center justify-center border border-tri-500/30">
+                        <i class="fa-solid fa-pen-to-square text-sm"></i>
+                    </div>
+                    <h3 id="modalTitle" class="text-base font-bold text-white font-heading">Añadir Nuevo Gasto</h3>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-700 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Form Body -->
+            <form id="expenseForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+                <input type="hidden" id="expenseId" value="">
+
+                <!-- Concepto -->
+                <div>
+                    <label for="concept" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Concepto / Descripción *</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-tag absolute left-3.5 top-3 text-slate-500 text-xs"></i>
+                        <input type="text" id="concept" required placeholder="Ej. Servicio de Luz, Resumen Visa, Coto" class="w-full pl-9 pr-3 py-2 text-sm bg-slate-950/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-tri-500 focus:ring-1 focus:ring-tri-500">
+                    </div>
+                </div>
+
+                <!-- Monto -->
+                <div>
+                    <label for="amount" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Monto ($) *</label>
+                    <div class="relative">
+                        <span class="absolute left-3.5 top-2.5 text-tri-400 font-bold text-sm">$</span>
+                        <input type="number" step="0.01" id="amount" required placeholder="0.00" class="w-full pl-8 pr-3 py-2 text-sm bg-slate-950/80 border border-slate-700 rounded-xl text-white font-bold placeholder-slate-500 focus:outline-none focus:border-tri-500 focus:ring-1 focus:ring-tri-500">
+                    </div>
+                </div>
+
+                <!-- Logo / Icono de Referencia & Upload Custom Logo -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Logo o Icono de Referencia</label>
+                    <div class="grid grid-cols-4 gap-2 mb-3" id="categoryGrid">
+                        <!-- Dynamic categories JS -->
+                    </div>
+                    <input type="hidden" id="selectedCategory" value="supermarket">
+
+                    <!-- Custom Logo Upload / URL Option -->
+                    <div class="p-3 bg-slate-950/50 rounded-xl border border-slate-800 space-y-2">
+                        <p class="text-[11px] text-slate-400 font-medium">¿Deseas adjuntar un Logo / Imagen personalizada?</p>
+                        <div class="flex gap-2 items-center">
+                            <input type="file" id="customLogoFile" accept="image/*" onchange="handleImageUpload(event)" class="hidden">
+                            <button type="button" onclick="document.getElementById('customLogoFile').click()" class="px-3 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 font-medium transition-colors flex items-center gap-1.5">
+                                <i class="fa-solid fa-upload text-tri-400"></i>
+                                <span>Subir Imagen Logo</span>
+                            </button>
+                            <span id="customLogoStatus" class="text-[11px] text-slate-500 truncate italic">Ninguna imagen seleccionada</span>
+                        </div>
+                        <input type="hidden" id="customLogoData" value="">
+                    </div>
+                </div>
+
+                <!-- Forma de Pago -->
+                <div>
+                    <label for="paymentMethod" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Forma de Pago</label>
+                    <select id="paymentMethod" onchange="toggleCardDetails()" class="w-full px-3 py-2 text-sm bg-slate-950/80 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:border-tri-500">
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="Transferencia">Transferencia Bancaria</option>
+                        <option value="Débito">Tarjeta de Débito</option>
+                        <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+                        <option value="Cripto">Cripto / Wallet</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </div>
+
+                <!-- Especificación de Tarjeta (Condicional) -->
+                <div id="cardDetailsContainer" class="hidden p-3.5 bg-purple-950/30 rounded-xl border border-purple-800/40 space-y-3">
+                    <div>
+                        <label for="cardType" class="block text-xs font-semibold text-purple-300 mb-1">Tarjeta de Crédito Especifica</label>
+                        <select id="cardType" class="w-full px-3 py-2 text-sm bg-slate-900 border border-purple-700/60 rounded-lg text-slate-200 focus:outline-none">
+                            <option value="Visa Signature">Visa Signature</option>
+                            <option value="Visa Black">Visa Black</option>
+                            <option value="Mastercard Black">Mastercard Black</option>
+                            <option value="American Express">American Express</option>
+                            <option value="Naranja X">Naranja X</option>
+                            <option value="Cabal">Cabal</option>
+                            <option value="Otra Tarjeta">Otra Tarjeta</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="installments" class="block text-xs font-semibold text-purple-300 mb-1">Plan de Cuotas</label>
+                        <select id="installments" class="w-full px-3 py-2 text-sm bg-slate-900 border border-purple-700/60 rounded-lg text-slate-200 focus:outline-none">
+                            <option value="1">1 pago (Unpago / Al contado)</option>
+                            <option value="3">3 cuotas fijas</option>
+                            <option value="6">6 cuotas fijas</option>
+                            <option value="12">12 cuotas fijas</option>
+                            <option value="18">18 cuotas fijas</option>
+                            <option value="24">24 cuotas fijas</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Fechas (Gasto y Vencimiento) -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label for="expenseDate" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Fecha del Gasto *</label>
+                        <input type="date" id="expenseDate" required class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-950/80 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:border-tri-500">
+                    </div>
+                    <div>
+                        <label for="dueDate" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Fecha Vencimiento</label>
+                        <input type="date" id="dueDate" class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-950/80 border border-slate-700 rounded-xl text-slate-200 focus:outline-none focus:border-tri-500">
+                    </div>
+                </div>
+
+                <!-- Estado de Pago -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Estado Inicial</label>
+                    <div class="flex items-center gap-4">
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="paymentStatus" value="PENDING" checked class="text-tri-500 focus:ring-tri-500 bg-slate-950 border-slate-700">
+                            <span class="text-xs text-slate-300">Pendiente de pago</span>
+                        </label>
+                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="paymentStatus" value="PAID" class="text-emerald-500 focus:ring-emerald-500 bg-slate-950 border-slate-700">
+                            <span class="text-xs text-slate-300">Saldado / Pagado</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-2 flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-tri-600 to-tri-500 hover:from-tri-500 hover:to-tri-400 text-white text-xs font-bold transition-all shadow-lg shadow-tri-500/20 active:scale-95">
+                        Guardar Registro
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <div id="toastIconContainer" class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+            <i id="toastIcon" class="fa-solid fa-check"></i>
+        </div>
+        <span id="toastMsg" class="font-medium text-slate-200">Operación exitosa</span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 py-6 mt-12 bg-slate-950/40">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <span class="font-bold font-heading text-slate-400">TRI</span>
+                <span>— Sistema Integrado de Finanzas</span>
+            </div>
+            <p>Control de Gastos & Exportación de Vencimientos Google Calendar</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Preset categories with icons and color schemes
+        const CATEGORIES = {
+            supermarket: { label: 'Supermercado', icon: 'fa-cart-shopping', color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
+            services: { label: 'Servicios', icon: 'fa-bolt', color: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
+            streaming: { label: 'Streaming/Tech', icon: 'fa-tv', color: 'bg-rose-500/15 text-rose-400 border-rose-500/30' },
+            office: { label: 'Oficina/Empresa', icon: 'fa-building', color: 'bg-sky-500/15 text-sky-400 border-sky-500/30' },
+            transport: { label: 'Transporte', icon: 'fa-car', color: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
+            food: { label: 'Gastronomía', icon: 'fa-utensils', color: 'bg-orange-500/15 text-orange-400 border-orange-500/30' },
+            cards: { label: 'Resumen Tarjeta', icon: 'fa-credit-card', color: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
+            others: { label: 'Varios/Otros', icon: 'fa-cubes', color: 'bg-slate-700/40 text-slate-300 border-slate-600' }
+        };
+
+        // Application State
+        let expenses = [];
+
+        window.onload = function() {
+            document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+            renderCategoryGrid();
+            loadExpenses();
+            renderExpenses();
+        };
+
+        // Load data from LocalStorage or mock data on first load
+        function loadExpenses() {
+            const saved = localStorage.getItem('tri_expenses_db');
+            if (saved) {
+                try {
+                    expenses = JSON.parse(saved);
+                } catch(e) {
+                    expenses = [];
+                }
+            } else {
+                // TRI Initial Demo Data
+                expenses = [
+                    {
+                        id: '1',
+                        concept: 'Resumen Tarjeta Visa Signature',
+                        amount: 285400,
+                        category: 'cards',
+                        customLogo: '',
+                        paymentMethod: 'Tarjeta de Crédito',
+                        cardType: 'Visa Signature',
+                        installments: '1',
+                        expenseDate: new Date().toISOString().split('T')[0],
+                        dueDate: getFutureDate(4),
+                        status: 'PENDING'
+                    },
+                    {
+                        id: '2',
+                        concept: 'Servicio Cloud Server TRI',
+                        amount: 45000,
+                        category: 'office',
+                        customLogo: '',
+                        paymentMethod: 'Transferencia',
+                        cardType: '',
+                        installments: '',
+                        expenseDate: new Date().toISOString().split('T')[0],
+                        dueDate: getFutureDate(12),
+                        status: 'PAID'
+                    },
+                    {
+                        id: '3',
+                        concept: 'Supermercado Coto Almacén',
+                        amount: 68300,
+                        category: 'supermarket',
+                        customLogo: '',
+                        paymentMethod: 'Débito',
+                        cardType: '',
+                        installments: '',
+                        expenseDate: new Date().toISOString().split('T')[0],
+                        dueDate: '',
+                        status: 'PAID'
+                    }
+                ];
+                saveExpenses();
+            }
+        }
+
+        function saveExpenses() {
+            localStorage.setItem('tri_expenses_db', JSON.stringify(expenses));
+        }
+
+        // Render visual category picker
+        function renderCategoryGrid() {
+            const grid = document.getElementById('categoryGrid');
+            grid.innerHTML = '';
+
+            Object.keys(CATEGORIES).forEach(key => {
+                const cat = CATEGORIES[key];
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.onclick = () => selectCategory(key);
+                btn.id = `cat-btn-${key}`;
+                btn.className = `p-2 text-center rounded-xl border border-slate-800 hover:border-tri-500 bg-slate-950/60 transition-all flex flex-col items-center gap-1 ${key === 'supermarket' ? 'ring-2 ring-tri-500 bg-tri-950/30' : ''}`;
+                
+                btn.innerHTML = `
+                    <div class="w-6 h-6 rounded-lg ${cat.color} flex items-center justify-center text-xs">
+                        <i class="fa-solid ${cat.icon}"></i>
+                    </div>
+                    <span class="text-[10px] font-medium text-slate-400 truncate w-full">${cat.label}</span>
+                `;
+                grid.appendChild(btn);
+            });
+        }
+
+        function selectCategory(catKey) {
+            document.getElementById('selectedCategory').value = catKey;
+            Object.keys(CATEGORIES).forEach(key => {
+                const btn = document.getElementById(`cat-btn-${key}`);
+                if (key === catKey) {
+                    btn.classList.add('ring-2', 'ring-tri-500', 'bg-tri-950/30');
+                } else {
+                    btn.classList.remove('ring-2', 'ring-tri-500', 'bg-tri-950/30');
+                }
+            });
+        }
+
+        // Handle Custom Logo Upload (Base64 conversion)
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            const statusLabel = document.getElementById('customLogoStatus');
+            const hiddenData = document.getElementById('customLogoData');
+
+            if (file) {
+                if (file.size > 2 * 1024 * 1024) {
+                    showToast('El archivo supera los 2MB max.', 'error');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    hiddenData.value = evt.target.result;
+                    statusLabel.innerText = file.name;
+                    statusLabel.classList.remove('text-slate-500');
+                    statusLabel.classList.add('text-tri-400', 'font-semibold');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function toggleCardDetails() {
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            const cardContainer = document.getElementById('cardDetailsContainer');
+            if (paymentMethod === 'Tarjeta de Crédito') {
+                cardContainer.classList.remove('hidden');
+            } else {
+                cardContainer.classList.add('hidden');
+            }
+        }
+
+        // Open & Close Modal
+        function openModal() {
+            resetModalForm();
+            const modal = document.getElementById('expenseModal');
+            const modalContent = document.getElementById('modalContent');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modalContent.classList.remove('scale-95');
+            modalContent.classList.add('scale-100');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('expenseModal');
+            const modalContent = document.getElementById('modalContent');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function resetModalForm() {
+            document.getElementById('expenseForm').reset();
+            document.getElementById('expenseId').value = '';
+            document.getElementById('customLogoData').value = '';
+            document.getElementById('customLogoStatus').innerText = 'Ninguna imagen seleccionada';
+            document.getElementById('customLogoStatus').className = 'text-[11px] text-slate-500 truncate italic';
+            document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modalTitle').innerText = 'Añadir Nuevo Gasto';
+            selectCategory('supermarket');
+            toggleCardDetails();
+        }
+
+        // Form Submit handler
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('expenseId').value;
+            const concept = document.getElementById('concept').value.trim();
+            const amount = parseFloat(document.getElementById('amount').value);
+            const category = document.getElementById('selectedCategory').value;
+            const customLogo = document.getElementById('customLogoData').value;
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            const cardType = paymentMethod === 'Tarjeta de Crédito' ? document.getElementById('cardType').value : '';
+            const installments = paymentMethod === 'Tarjeta de Crédito' ? document.getElementById('installments').value : '';
+            const expenseDate = document.getElementById('expenseDate').value;
+            const dueDate = document.getElementById('dueDate').value;
+            const status = document.querySelector('input[name="paymentStatus"]:checked').value;
+
+            if (!concept || isNaN(amount)) {
+                showToast('Por favor completa los campos requeridos', 'error');
+                return;
+            }
+
+            if (id) {
+                const idx = expenses.findIndex(x => x.id === id);
+                if (idx !== -1) {
+                    expenses[idx] = { id, concept, amount, category, customLogo, paymentMethod, cardType, installments, expenseDate, dueDate, status };
+                    showToast('Registro actualizado en TRI');
+                }
+            } else {
+                const newExpense = {
+                    id: Date.now().toString(),
+                    concept,
+                    amount,
+                    category,
+                    customLogo,
+                    paymentMethod,
+                    cardType,
+                    installments,
+                    expenseDate,
+                    dueDate,
+                    status
+                };
+                expenses.unshift(newExpense);
+                showToast('Nuevo gasto guardado correctamente');
+            }
+
+            saveExpenses();
+            renderExpenses();
+            closeModal();
+        }
+
+        // Edit Expense
+        function editExpense(id) {
+            const item = expenses.find(x => x.id === id);
+            if (!item) return;
+
+            openModal();
+
+            document.getElementById('expenseId').value = item.id;
+            document.getElementById('concept').value = item.concept;
+            document.getElementById('amount').value = item.amount;
+            document.getElementById('paymentMethod').value = item.paymentMethod;
+
+            toggleCardDetails();
+            if (item.paymentMethod === 'Tarjeta de Crédito') {
+                document.getElementById('cardType').value = item.cardType || 'Visa Signature';
+                document.getElementById('installments').value = item.installments || '1';
+            }
+
+            document.getElementById('expenseDate').value = item.expenseDate;
+            document.getElementById('dueDate').value = item.dueDate || '';
+
+            if (item.customLogo) {
+                document.getElementById('customLogoData').value = item.customLogo;
+                document.getElementById('customLogoStatus').innerText = 'Imagen cargada';
+                document.getElementById('customLogoStatus').className = 'text-[11px] text-tri-400 font-semibold truncate';
+            }
+
+            selectCategory(item.category || 'others');
+
+            const statusRadios = document.querySelectorAll('input[name="paymentStatus"]');
+            statusRadios.forEach(r => {
+                if (r.value === item.status) r.checked = true;
+            });
+
+            document.getElementById('modalTitle').innerText = 'Editar Registro TRI';
+        }
+
+        // Toggle Status Quick Button
+        function toggleStatus(id) {
+            const item = expenses.find(x => x.id === id);
+            if (!item) return;
+            item.status = item.status === 'PAID' ? 'PENDING' : 'PAID';
+            saveExpenses();
+            renderExpenses();
+            showToast(`Estado actualizado: ${item.status === 'PAID' ? 'Pagado' : 'Pendiente'}`);
+        }
+
+        // Delete Expense
+        function deleteExpense(id) {
+            if (confirm('¿Eliminar este gasto de la base de datos de TRI?')) {
+                expenses = expenses.filter(x => x.id !== id);
+                saveExpenses();
+                renderExpenses();
+                showToast('Registro eliminado');
+            }
+        }
+
+        // Render Table & Cards Dashboard View
+        function renderExpenses() {
+            const tbody = document.getElementById('expenseTableBody');
+            const mobileContainer = document.getElementById('expenseMobileContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            tbody.innerHTML = '';
+            mobileContainer.innerHTML = '';
+
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filterPayment = document.getElementById('filterPayment').value;
+            const filterStatus = document.getElementById('filterStatus').value;
+            const filterMonth = document.getElementById('filterMonth').value;
+
+            // Apply Filters
+            const filtered = expenses.filter(item => {
+                const matchesSearch = item.concept.toLowerCase().includes(searchTerm) || 
+                                     (item.cardType && item.cardType.toLowerCase().includes(searchTerm));
+                
+                const matchesPayment = filterPayment === 'ALL' || item.paymentMethod === filterPayment;
+                const matchesStatus = filterStatus === 'ALL' || item.status === filterStatus;
+
+                let matchesMonth = true;
+                if (filterMonth) {
+                    matchesMonth = item.expenseDate.startsWith(filterMonth) || (item.dueDate && item.dueDate.startsWith(filterMonth));
+                }
+
+                return matchesSearch && matchesPayment && matchesStatus && matchesMonth;
+            });
+
+            document.getElementById('recordCount').innerText = `${filtered.length} registro/s`;
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.forEach(item => {
+                const cat = CATEGORIES[item.category] || CATEGORIES.others;
+                const googleCalUrl = createGoogleCalendarLink(item);
+
+                // Due badge logic
+                let dueBadge = '';
+                if (item.dueDate) {
+                    const daysLeft = getDaysUntil(item.dueDate);
+                    if (item.status === 'PAID') {
+                        dueBadge = `<span class="text-[10px] text-emerald-400 font-medium">Vencía ${item.dueDate}</span>`;
+                    } else if (daysLeft < 0) {
+                        dueBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">Vencido (${item.dueDate})</span>`;
+                    } else if (daysLeft <= 5) {
+                        dueBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">Vence en ${daysLeft}d (${item.dueDate})</span>`;
+                    } else {
+                        dueBadge = `<span class="text-xs text-slate-400">${item.dueDate}</span>`;
+                    }
+                } else {
+                    dueBadge = `<span class="text-xs text-slate-600">-</span>`;
+                }
+
+                // Status Badge
+                const statusBadge = item.status === 'PAID'
+                    ? `<button onclick="toggleStatus('${item.id}')" title="Cambiar Estado" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 mx-auto"><i class="fa-solid fa-check"></i> Pagado</button>`
+                    : `<button onclick="toggleStatus('${item.id}')" title="Cambiar Estado" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 mx-auto"><i class="fa-solid fa-clock"></i> Pendiente</button>`;
+
+                // Custom Logo / Icon Thumbnail
+                const logoHtml = item.customLogo 
+                    ? `<img src="${item.customLogo}" class="w-9 h-9 rounded-xl object-cover border border-slate-700 shadow-sm shrink-0">`
+                    : `<div class="w-9 h-9 rounded-xl ${cat.color} flex items-center justify-center shrink-0 border shadow-sm"><i class="fa-solid ${cat.icon} text-sm"></i></div>`;
+
+                // Render Desktop Table Row
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/40 transition-colors group';
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4">
+                        <div class="flex items-center gap-3">
+                            ${logoHtml}
+                            <div class="min-w-0">
+                                <p class="font-bold text-slate-100 truncate font-heading">${escapeHtml(item.concept)}</p>
+                                <span class="text-[11px] text-slate-400">${cat.label}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <div class="text-xs">
+                            <span class="font-semibold text-slate-300">${item.paymentMethod}</span>
+                            ${item.cardType ? `<div class="text-[11px] text-purple-400 font-medium">${item.cardType} (${item.installments || 1} cuota/s)</div>` : ''}
+                        </div>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <div class="text-xs">
+                            <div class="text-slate-400">Fecha: ${item.expenseDate}</div>
+                            <div class="mt-0.5">${dueBadge}</div>
+                        </div>
+                    </td>
+                    <td class="py-3.5 px-4 text-right">
+                        <span class="font-black text-white text-base font-heading">${formatCurrency(item.amount)}</span>
+                    </td>
+                    <td class="py-3.5 px-4 text-center">
+                        ${statusBadge}
+                    </td>
+                    <td class="py-3.5 px-4 text-center">
+                        <div class="flex items-center justify-center gap-1">
+                            ${item.dueDate ? `
+                                <a href="${googleCalUrl}" target="_blank" title="Sincronizar Recordatorio con Google Calendar" class="p-1.5 text-sky-400 hover:bg-sky-500/20 rounded-lg transition-colors">
+                                    <i class="fa-regular fa-calendar-plus"></i>
+                                </a>
+                            ` : ''}
+                            <button onclick="editExpense('${item.id}')" title="Editar" class="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700/60 rounded-lg transition-colors">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                            <button onclick="deleteExpense('${item.id}')" title="Eliminar" class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/20 rounded-lg transition-colors">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+
+                // Render Mobile Card
+                const card = document.createElement('div');
+                card.className = 'glass-panel p-4 rounded-2xl space-y-3 relative border border-slate-800';
+                card.innerHTML = `
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="flex items-center gap-3">
+                            ${logoHtml}
+                            <div>
+                                <h4 class="font-bold text-white text-sm font-heading">${escapeHtml(item.concept)}</h4>
+                                <span class="text-[10px] text-slate-400">${cat.label} • ${item.paymentMethod}</span>
+                            </div>
+                        </div>
+                        <span class="font-black text-white text-base font-heading">${formatCurrency(item.amount)}</span>
+                    </div>
+
+                    ${item.cardType ? `<div class="text-xs bg-purple-950/40 border border-purple-800/40 px-2.5 py-1 rounded-lg text-purple-300 font-medium">Tarjeta: ${item.cardType} (${item.installments} cuotas)</div>` : ''}
+
+                    <div class="flex items-center justify-between text-xs pt-2 border-t border-slate-800/80">
+                        <div>
+                            <span class="text-slate-500 text-[10px]">Fecha: ${item.expenseDate}</span>
+                            <div class="mt-0.5">${dueBadge}</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${statusBadge}
+                            ${item.dueDate ? `
+                                <a href="${googleCalUrl}" target="_blank" title="Google Calendar" class="p-2 text-sky-400 bg-sky-950/50 border border-sky-800/50 rounded-xl">
+                                    <i class="fa-regular fa-calendar-plus text-xs"></i>
+                                </a>
+                            ` : ''}
+                            <button onclick="editExpense('${item.id}')" class="p-2 text-slate-400 bg-slate-800 rounded-xl">
+                                <i class="fa-solid fa-pen-to-square text-xs"></i>
+                            </button>
+                            <button onclick="deleteExpense('${item.id}')" class="p-2 text-rose-400 bg-rose-950/40 rounded-xl">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                mobileContainer.appendChild(card);
+            });
+
+            updateStats();
+        }
+
+        // Calculate and update dashboard stats
+        function updateStats() {
+            const total = expenses.reduce((sum, item) => sum + item.amount, 0);
+            const cardTotal = expenses
+                .filter(item => item.paymentMethod === 'Tarjeta de Crédito')
+                .reduce((sum, item) => sum + item.amount, 0);
+            const paidTotal = expenses
+                .filter(item => item.status === 'PAID')
+                .reduce((sum, item) => sum + item.amount, 0);
+
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            const pendingCount = expenses.filter(item => {
+                if (!item.dueDate || item.status === 'PAID') return false;
+                const due = new Date(item.dueDate + 'T00:00:00');
+                const diffDays = (due - today) / (1000 * 60 * 60 * 24);
+                return diffDays >= 0 && diffDays <= 7;
+            }).length;
+
+            document.getElementById('statTotal').innerText = formatCurrency(total);
+            document.getElementById('statCredit').innerText = formatCurrency(cardTotal);
+            document.getElementById('statPaid').innerText = formatCurrency(paidTotal);
+            document.getElementById('statPending').innerText = pendingCount;
+        }
+
+        // Build Google Calendar Event URL
+        function createGoogleCalendarLink(item) {
+            if (!item.dueDate) return '#';
+
+            const title = encodeURIComponent(`[TRI] Vencimiento: ${item.concept}`);
+            const cleanDate = item.dueDate.replace(/-/g, '');
+            const dates = `${cleanDate}T090000Z/${cleanDate}T100000Z`;
+
+            let details = `Gasto TRI: ${item.concept}\nMonto: $${item.amount}\nForma de pago: ${item.paymentMethod}`;
+            if (item.cardType) {
+                details += ` (${item.cardType} - ${item.installments} cuotas)`;
+            }
+            const detailsEncoded = encodeURIComponent(details);
+
+            return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${detailsEncoded}`;
+        }
+
+        // Export Excel SheetJS
+        function exportToExcel() {
+            if (expenses.length === 0) {
+                showToast('No hay datos para exportar', 'error');
+                return;
+            }
+
+            const excelData = expenses.map(item => ({
+                'Empresa': 'TRI Finance',
+                'ID Registro': item.id,
+                'Concepto / Detalle': item.concept,
+                'Categoría': CATEGORIES[item.category] ? CATEGORIES[item.category].label : item.category,
+                'Monto ($)': item.amount,
+                'Estado': item.status === 'PAID' ? 'Pagado' : 'Pendiente',
+                'Forma de Pago': item.paymentMethod,
+                'Tarjeta Especifica': item.cardType || '-',
+                'Plan Cuotas': item.installments || '-',
+                'Fecha de Gasto': item.expenseDate,
+                'Fecha de Vencimiento': item.dueDate || '-'
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte TRI");
+
+            worksheet['!cols'] = [
+                {wch: 12}, {wch: 12}, {wch: 30}, {wch: 18}, {wch: 14}, 
+                {wch: 12}, {wch: 20}, {wch: 18}, {wch: 12}, {wch: 15}, {wch: 18}
+            ];
+
+            const fileName = `Reporte_TRI_Gastos_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+            showToast('Archivo Excel descargado con éxito');
+        }
+
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterPayment').value = 'ALL';
+            document.getElementById('filterStatus').value = 'ALL';
+            document.getElementById('filterMonth').value = '';
+            renderExpenses();
+        }
+
+        function formatCurrency(val) {
+            return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(val);
+        }
+
+        function getDaysUntil(dateStr) {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const target = new Date(dateStr + 'T00:00:00');
+            return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+        }
+
+        function getFutureDate(days) {
+            const d = new Date();
+            d.setDate(d.getDate() + days);
+            return d.toISOString().split('T')[0];
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            const toastIcon = document.getElementById('toastIcon');
+            const toastIconContainer = document.getElementById('toastIconContainer');
+
+            toastMsg.innerText = msg;
+            if (type === 'error') {
+                toastIcon.className = 'fa-solid fa-triangle-exclamation';
+                toastIconContainer.className = 'w-7 h-7 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0';
+            } else {
+                toastIcon.className = 'fa-solid fa-check';
+                toastIconContainer.className = 'w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
