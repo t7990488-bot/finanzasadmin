@@ -8,10 +8,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- SheetJS for Excel (.xlsx) Export -->
+    <!-- SheetJS para exportar a Excel (.xlsx) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Google Fonts: Inter & Plus Jakarta Sans -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDK v10 (Compat version) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
     <script>
         tailwind.config = {
@@ -48,7 +53,7 @@
         h1, h2, h3, h4, .font-heading {
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
-        /* Custom scrollbar */
+        /* Custom scrollbars */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -73,11 +78,6 @@
             backdrop-filter: blur(16px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
-        .gradient-text {
-            background: linear-gradient(135deg, #2dd4bf 0%, #38bdf8 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
         .glow-teal {
             box-shadow: 0 0 20px -3px rgba(45, 212, 191, 0.25);
         }
@@ -88,7 +88,7 @@
     <!-- Header & TRI Brand Bar -->
     <header class="glass-header sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-            <!-- Brand Logo -->
+            <!-- Brand Logo TRI -->
             <div class="flex items-center gap-3">
                 <div class="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-gradient-to-tr from-tri-600 via-tri-500 to-sky-400 text-white font-extrabold text-xl shadow-lg shadow-tri-500/20 ring-1 ring-white/20">
                     <span class="tracking-tighter font-heading">TRI</span>
@@ -97,6 +97,9 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <span class="text-xl font-black tracking-wider text-white font-heading">TRI</span>
+                        <span id="syncIndicator" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 flex items-center gap-1">
+                            <i class="fa-solid fa-circle-notch fa-spin text-tri-400"></i> Conectando...
+                        </span>
                     </div>
                     <p class="text-xs text-slate-400">Control de Gastos y Vencimientos</p>
                 </div>
@@ -120,7 +123,7 @@
     <!-- Main Content Body -->
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
-        <!-- Executive Dashboard KPI Cards -->
+        <!-- Dashboard KPI Cards -->
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- Total Gastos -->
             <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
@@ -150,7 +153,7 @@
                 </div>
             </div>
 
-            <!-- Vencimientos Pendientes (Próximos) -->
+            <!-- Vencimientos Pendientes -->
             <div class="glass-panel p-5 rounded-2xl relative overflow-hidden group">
                 <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition-all"></div>
                 <div class="flex items-center justify-between">
@@ -245,14 +248,14 @@
                         </tr>
                     </thead>
                     <tbody id="expenseTableBody" class="divide-y divide-slate-800/60 text-sm">
-                        <!-- Dynamic content loaded via JS -->
+                        <!-- Dynamic content -->
                     </tbody>
                 </table>
             </div>
 
             <!-- Cards Layout Container (Mobile View) -->
             <div id="expenseMobileContainer" class="md:hidden grid grid-cols-1 gap-3">
-                <!-- Mobile Cards dynamically loaded -->
+                <!-- Mobile Cards -->
             </div>
 
             <!-- Empty State Display -->
@@ -261,7 +264,7 @@
                     <i class="fa-regular fa-folder-open text-4xl"></i>
                 </div>
                 <h3 class="text-base font-bold text-white font-heading">No se encontraron gastos registrados</h3>
-                <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Haz clic en "Añadir Gasto" para registrar tus comprobantes, comprobantes de tarjetas o vencimientos de servicios.</p>
+                <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Haz clic en "Añadir Gasto" para registrar tus servicios, compras o resúmenes de tarjeta.</p>
                 <button onclick="openModal()" class="mt-4 px-4 py-2 bg-tri-600 hover:bg-tri-500 text-white text-xs font-bold rounded-xl transition-all inline-flex items-center gap-2">
                     <i class="fa-solid fa-plus"></i>
                     <span>Cargar Primer Gasto</span>
@@ -296,7 +299,7 @@
                     <label for="concept" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Concepto / Descripción *</label>
                     <div class="relative">
                         <i class="fa-solid fa-tag absolute left-3.5 top-3 text-slate-500 text-xs"></i>
-                        <input type="text" id="concept" required placeholder="Ej. Servicio de Luz, Resumen Visa, Coto" class="w-full pl-9 pr-3 py-2 text-sm bg-slate-950/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-tri-500 focus:ring-1 focus:ring-tri-500">
+                        <input type="text" id="concept" required placeholder="Ej. Servicio de Luz, Resumen Visa, Supermercado" class="w-full pl-9 pr-3 py-2 text-sm bg-slate-950/80 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-tri-500 focus:ring-1 focus:ring-tri-500">
                     </div>
                 </div>
 
@@ -309,7 +312,7 @@
                     </div>
                 </div>
 
-                <!-- Logo / Icono de Referencia & Upload Custom Logo -->
+                <!-- Logo / Icono de Referencia -->
                 <div>
                     <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Logo o Icono de Referencia</label>
                     <div class="grid grid-cols-4 gap-2 mb-3" id="categoryGrid">
@@ -317,7 +320,7 @@
                     </div>
                     <input type="hidden" id="selectedCategory" value="supermarket">
 
-                    <!-- Custom Logo Upload / URL Option -->
+                    <!-- Custom Logo Upload -->
                     <div class="p-3 bg-slate-950/50 rounded-xl border border-slate-800 space-y-2">
                         <p class="text-[11px] text-slate-400 font-medium">¿Deseas adjuntar un Logo / Imagen personalizada?</p>
                         <div class="flex gap-2 items-center">
@@ -345,12 +348,12 @@
                     </select>
                 </div>
 
-                <!-- Especificación de Tarjeta (Débito y Crédito) -->
+                <!-- Especificación de Tarjeta -->
                 <div id="cardDetailsContainer" class="hidden p-3.5 bg-purple-950/30 rounded-xl border border-purple-800/40 space-y-3">
                     <div>
                         <label for="cardAlias" class="block text-xs font-semibold text-purple-300 mb-1">Nombre / Alias de Referencia de la Tarjeta *</label>
                         <input type="text" id="cardAlias" placeholder="Ej: Visa Santander titular, Mastercard Galicia Mamá, Débito BBVA" class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-900 border border-purple-700/60 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-400">
-                        <p class="text-[10px] text-purple-300/70 mt-1">Sirve para identificar cuál tarjeta utilizaste exactamente.</p>
+                        <p class="text-[10px] text-purple-300/70 mt-1">Identifica cuál tarjeta utilizaste exactamente.</p>
                     </div>
                     <div id="creditCardExtraFields" class="space-y-3">
                         <div>
@@ -381,7 +384,7 @@
                     </div>
                 </div>
 
-                <!-- Fechas (Gasto y Vencimiento) -->
+                <!-- Fechas -->
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label for="expenseDate" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">Fecha del Gasto *</label>
@@ -436,13 +439,28 @@
                 <span class="font-bold font-heading text-slate-400">TRI</span>
                 <span>— Control de Gastos y Vencimientos</span>
             </div>
-            <p>Sincronización con Google Calendar & Exportación a Excel</p>
+            <p>Sincronización Cloud Firebase Realtime</p>
         </div>
     </footer>
 
-    <!-- JavaScript Application Logic -->
+    <!-- JavaScript Application Logic & Firebase Integration -->
     <script>
-        // Preset categories with icons and color schemes
+        // YOUR FIREBASE CONFIGURATION EMBEDDED
+        const firebaseConfig = {
+            apiKey: "AIzaSyAXqG0SaBCS8bN42mQG8VcayYJuQGzdXfM",
+            authDomain: "tri-gastos.firebaseapp.com",
+            projectId: "tri-gastos",
+            storageBucket: "tri-gastos.firebasestorage.app",
+            messagingSenderId: "843976544023",
+            appId: "1:843976544023:web:569c6e5ad2d3c2dc24f152"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Preset Categories
         const CATEGORIES = {
             supermarket: { label: 'Supermercado', icon: 'fa-cart-shopping', color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
             services: { label: 'Servicios', icon: 'fa-bolt', color: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
@@ -457,93 +475,89 @@
         // Application State
         let expenses = [];
         let alertThresholdDays = 7;
+        let currentUser = null;
+        let unsubscribeGastos = null;
 
         window.onload = function() {
-            const savedDays = localStorage.getItem('tri_alert_days');
-            if (savedDays) {
-                alertThresholdDays = parseInt(savedDays, 10) || 7;
-            }
-            document.getElementById('alertDaysInput').value = alertThresholdDays;
             document.getElementById('expenseDate').value = new Date().toISOString().split('T')[0];
             renderCategoryGrid();
-            loadExpenses();
-            renderExpenses();
+
+            // Direct Login / Anonymous Authentication with Firebase
+            auth.signInAnonymously().catch(err => {
+                console.error("Auth error:", err);
+                updateSyncStatus(false, 'Error conexión');
+            });
+
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    currentUser = user;
+                    updateSyncStatus(true, 'Nube Sincronizada');
+                    listenToFirebaseData();
+                } else {
+                    currentUser = null;
+                    updateSyncStatus(false, 'Desconectado');
+                }
+            });
         };
+
+        function updateSyncStatus(connected, text) {
+            const el = document.getElementById('syncIndicator');
+            if (connected) {
+                el.className = 'text-[10px] px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1';
+                el.innerHTML = `<i class="fa-solid fa-cloud text-emerald-400"></i> ${text}`;
+            } else {
+                el.className = 'text-[10px] px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-800 flex items-center gap-1';
+                el.innerHTML = `<i class="fa-solid fa-cloud-slash"></i> ${text}`;
+            }
+        }
+
+        // Firestore Realtime Listener
+        function listenToFirebaseData() {
+            if (!currentUser) return;
+
+            // Load user alert days config
+            db.collection('artifacts').doc('tri-app').collection('users').doc(currentUser.uid).collection('settings').doc('userConfig')
+                .get().then(doc => {
+                    if (doc.exists && doc.data().alertDays) {
+                        alertThresholdDays = doc.data().alertDays;
+                        document.getElementById('alertDaysInput').value = alertThresholdDays;
+                    }
+                });
+
+            // Listen to Expenses collection in realtime
+            if (unsubscribeGastos) unsubscribeGastos();
+
+            unsubscribeGastos = db.collection('artifacts').doc('tri-app').collection('users').doc(currentUser.uid).collection('gastos')
+                .onSnapshot(snapshot => {
+                    expenses = [];
+                    snapshot.forEach(doc => {
+                        expenses.push({ id: doc.id, ...doc.data() });
+                    });
+                    
+                    // Sort by expense date descending
+                    expenses.sort((a, b) => new Date(b.expenseDate) - new Date(a.expenseDate));
+                    renderExpenses();
+                }, err => {
+                    console.error("Firestore listen error:", err);
+                    showToast('Error al actualizar datos en tiempo real', 'error');
+                });
+        }
 
         function updateAlertDays(val) {
             const parsed = parseInt(val, 10);
             if (parsed > 0 && parsed <= 90) {
                 alertThresholdDays = parsed;
-                localStorage.setItem('tri_alert_days', alertThresholdDays.toString());
+                if (currentUser) {
+                    db.collection('artifacts').doc('tri-app').collection('users').doc(currentUser.uid).collection('settings').doc('userConfig').set({
+                        alertDays: alertThresholdDays
+                    }, { merge: true });
+                }
                 renderExpenses();
                 showToast(`Alertas ajustadas a ${alertThresholdDays} días`);
             }
         }
 
-        // Load data from LocalStorage or mock data on first load
-        function loadExpenses() {
-            const saved = localStorage.getItem('tri_expenses_db');
-            if (saved) {
-                try {
-                    expenses = JSON.parse(saved);
-                } catch(e) {
-                    expenses = [];
-                }
-            } else {
-                // TRI Initial Demo Data
-                expenses = [
-                    {
-                        id: '1',
-                        concept: 'Resumen Tarjeta Visa Signature',
-                        amount: 285400,
-                        category: 'cards',
-                        customLogo: '',
-                        paymentMethod: 'Tarjeta de Crédito',
-                        cardAlias: 'Visa Santander Titular',
-                        cardType: 'Visa Signature',
-                        installments: '1',
-                        expenseDate: new Date().toISOString().split('T')[0],
-                        dueDate: getFutureDate(4),
-                        status: 'PENDING'
-                    },
-                    {
-                        id: '2',
-                        concept: 'Servicio Cloud Server TRI',
-                        amount: 45000,
-                        category: 'office',
-                        customLogo: '',
-                        paymentMethod: 'Transferencia',
-                        cardAlias: '',
-                        cardType: '',
-                        installments: '',
-                        expenseDate: new Date().toISOString().split('T')[0],
-                        dueDate: getFutureDate(12),
-                        status: 'PAID'
-                    },
-                    {
-                        id: '3',
-                        concept: 'Supermercado Coto Almacén',
-                        amount: 68300,
-                        category: 'supermarket',
-                        customLogo: '',
-                        paymentMethod: 'Débito',
-                        cardAlias: 'Débito BBVA Personal',
-                        cardType: '',
-                        installments: '',
-                        expenseDate: new Date().toISOString().split('T')[0],
-                        dueDate: '',
-                        status: 'PAID'
-                    }
-                ];
-                saveExpenses();
-            }
-        }
-
-        function saveExpenses() {
-            localStorage.setItem('tri_expenses_db', JSON.stringify(expenses));
-        }
-
-        // Render visual category picker
+        // Category Picker Renderer
         function renderCategoryGrid() {
             const grid = document.getElementById('categoryGrid');
             grid.innerHTML = '';
@@ -578,7 +592,6 @@
             });
         }
 
-        // Handle Custom Logo Upload (Base64 conversion)
         function handleImageUpload(e) {
             const file = e.target.files[0];
             const statusLabel = document.getElementById('customLogoStatus');
@@ -586,15 +599,14 @@
 
             if (file) {
                 if (file.size > 2 * 1024 * 1024) {
-                    showToast('El archivo supera los 2MB max.', 'error');
+                    showToast('La imagen supera los 2MB máximo', 'error');
                     return;
                 }
                 const reader = new FileReader();
                 reader.onload = function(evt) {
                     hiddenData.value = evt.target.result;
                     statusLabel.innerText = file.name;
-                    statusLabel.classList.remove('text-slate-500');
-                    statusLabel.classList.add('text-tri-400', 'font-semibold');
+                    statusLabel.className = 'text-[11px] text-tri-400 font-semibold truncate';
                 };
                 reader.readAsDataURL(file);
             }
@@ -616,7 +628,6 @@
             }
         }
 
-        // Open & Close Modal
         function openModal() {
             resetModalForm();
             const modal = document.getElementById('expenseModal');
@@ -646,9 +657,13 @@
             toggleCardDetails();
         }
 
-        // Form Submit handler
-        function handleFormSubmit(e) {
+        // Form Submission to Firestore
+        async function handleFormSubmit(e) {
             e.preventDefault();
+            if (!currentUser) {
+                showToast('Aún conectando a la nube...', 'error');
+                return;
+            }
 
             const id = document.getElementById('expenseId').value;
             const concept = document.getElementById('concept').value.trim();
@@ -667,43 +682,46 @@
             const status = document.querySelector('input[name="paymentStatus"]:checked').value;
 
             if (!concept || isNaN(amount)) {
-                showToast('Por favor completa los campos requeridos', 'error');
+                showToast('Completa los campos obligatorios', 'error');
                 return;
             }
 
             if (isCard && !cardAlias) {
-                showToast('Por favor ingresa un nombre/alias de referencia para la tarjeta', 'error');
+                showToast('Ingresa un alias o nombre de la tarjeta', 'error');
                 return;
             }
 
-            if (id) {
-                const idx = expenses.findIndex(x => x.id === id);
-                if (idx !== -1) {
-                    expenses[idx] = { id, concept, amount, category, customLogo, paymentMethod, cardAlias, cardType, installments, expenseDate, dueDate, status };
-                    showToast('Registro actualizado en TRI');
-                }
-            } else {
-                const newExpense = {
-                    id: Date.now().toString(),
-                    concept,
-                    amount,
-                    category,
-                    customLogo,
-                    paymentMethod,
-                    cardAlias,
-                    cardType,
-                    installments,
-                    expenseDate,
-                    dueDate,
-                    status
-                };
-                expenses.unshift(newExpense);
-                showToast('Nuevo gasto guardado correctamente');
-            }
+            const payload = {
+                concept,
+                amount,
+                category,
+                customLogo,
+                paymentMethod,
+                cardAlias,
+                cardType,
+                installments,
+                expenseDate,
+                dueDate,
+                status,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
 
-            saveExpenses();
-            renderExpenses();
-            closeModal();
+            const userCol = db.collection('artifacts').doc('tri-app').collection('users').doc(currentUser.uid).collection('gastos');
+
+            try {
+                if (id) {
+                    await userCol.doc(id).update(payload);
+                    showToast('Gasto actualizado en la nube');
+                } else {
+                    payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                    await userCol.add(payload);
+                    showToast('Gasto guardado exitosamente');
+                }
+                closeModal();
+            } catch(err) {
+                console.error("Error al guardar:", err);
+                showToast('Error al guardar en la nube', 'error');
+            }
         }
 
         // Edit Expense
@@ -746,27 +764,37 @@
             document.getElementById('modalTitle').innerText = 'Editar Registro TRI';
         }
 
-        // Toggle Status Quick Button
-        function toggleStatus(id) {
+        // Toggle Status Button
+        async function toggleStatus(id) {
+            if (!currentUser) return;
             const item = expenses.find(x => x.id === id);
             if (!item) return;
-            item.status = item.status === 'PAID' ? 'PENDING' : 'PAID';
-            saveExpenses();
-            renderExpenses();
-            showToast(`Estado actualizado: ${item.status === 'PAID' ? 'Pagado' : 'Pendiente'}`);
-        }
-
-        // Delete Expense
-        function deleteExpense(id) {
-            if (confirm('¿Eliminar este gasto de la base de datos de TRI?')) {
-                expenses = expenses.filter(x => x.id !== id);
-                saveExpenses();
-                renderExpenses();
-                showToast('Registro eliminado');
+            
+            const newStatus = item.status === 'PAID' ? 'PENDING' : 'PAID';
+            try {
+                await db.collection('artifacts').doc('tri-app').collection('users').doc(currentUser.uid).collection('gastos').doc(id).update({
+                    status: newStatus
+                });
+                showToast(`Estado cambiado a ${newStatus === 'PAID' ? 'Pagado' : 'Pendiente'}`);
+            } catch(e) {
+                showToast('Error al cambiar el estado', 'error');
             }
         }
 
-        // Render Table & Cards Dashboard View
+        // Delete Expense
+        async function deleteExpense(id) {
+            if (!currentUser) return;
+            if (confirm('¿Eliminar permanentemente este gasto?')) {
+                try {
+                    await db.collection('artifacts').doc('tri-app').collection('users').doc(currentUser.uid).collection('gastos').doc(id).delete();
+                    showToast('Registro eliminado');
+                } catch(e) {
+                    showToast('Error al eliminar', 'error');
+                }
+            }
+        }
+
+        // Render Expense List in Dashboard
         function renderExpenses() {
             const tbody = document.getElementById('expenseTableBody');
             const mobileContainer = document.getElementById('expenseMobileContainer');
@@ -780,7 +808,6 @@
             const filterStatus = document.getElementById('filterStatus').value;
             const filterMonth = document.getElementById('filterMonth').value;
 
-            // Apply Filters
             const filtered = expenses.filter(item => {
                 const matchesSearch = item.concept.toLowerCase().includes(searchTerm) || 
                                      (item.cardType && item.cardType.toLowerCase().includes(searchTerm)) ||
@@ -809,7 +836,6 @@
                 const cat = CATEGORIES[item.category] || CATEGORIES.others;
                 const googleCalUrl = createGoogleCalendarLink(item);
 
-                // Due badge logic using user configurable threshold
                 let dueBadge = '';
                 if (item.dueDate) {
                     const daysLeft = getDaysUntil(item.dueDate);
@@ -826,23 +852,20 @@
                     dueBadge = `<span class="text-xs text-slate-600">-</span>`;
                 }
 
-                // Status Badge
                 const statusBadge = item.status === 'PAID'
                     ? `<button onclick="toggleStatus('${item.id}')" title="Cambiar Estado" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 mx-auto"><i class="fa-solid fa-check"></i> Pagado</button>`
                     : `<button onclick="toggleStatus('${item.id}')" title="Cambiar Estado" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 mx-auto"><i class="fa-solid fa-clock"></i> Pendiente</button>`;
 
-                // Custom Logo / Icon Thumbnail
                 const logoHtml = item.customLogo 
                     ? `<img src="${item.customLogo}" class="w-9 h-9 rounded-xl object-cover border border-slate-700 shadow-sm shrink-0">`
                     : `<div class="w-9 h-9 rounded-xl ${cat.color} flex items-center justify-center shrink-0 border shadow-sm"><i class="fa-solid ${cat.icon} text-sm"></i></div>`;
 
-                // Card info line string
                 let cardDetailHtml = '';
                 if (item.cardAlias) {
                     cardDetailHtml = `<div class="text-[11px] text-purple-300 font-semibold flex items-center gap-1 mt-0.5"><i class="fa-solid fa-credit-card text-[9px]"></i> ${escapeHtml(item.cardAlias)} ${item.cardType ? `(${item.cardType} - ${item.installments || 1}c)` : ''}</div>`;
                 }
 
-                // Render Desktop Table Row
+                // Desktop Table Row
                 const tr = document.createElement('tr');
                 tr.className = 'hover:bg-slate-800/40 transition-colors group';
                 tr.innerHTML = `
@@ -876,7 +899,7 @@
                     <td class="py-3.5 px-4 text-center">
                         <div class="flex items-center justify-center gap-1">
                             ${item.dueDate ? `
-                                <a href="${googleCalUrl}" target="_blank" title="Sincronizar Recordatorio con Google Calendar" class="p-1.5 text-sky-400 hover:bg-sky-500/20 rounded-lg transition-colors">
+                                <a href="${googleCalUrl}" target="_blank" title="Sincronizar Recordatorio en Google Calendar" class="p-1.5 text-sky-400 hover:bg-sky-500/20 rounded-lg transition-colors">
                                     <i class="fa-regular fa-calendar-plus"></i>
                                 </a>
                             ` : ''}
@@ -891,7 +914,7 @@
                 `;
                 tbody.appendChild(tr);
 
-                // Render Mobile Card
+                // Mobile Card View
                 const card = document.createElement('div');
                 card.className = 'glass-panel p-4 rounded-2xl space-y-3 relative border border-slate-800';
                 card.innerHTML = `
@@ -935,7 +958,6 @@
             updateStats();
         }
 
-        // Calculate and update dashboard stats
         function updateStats() {
             const total = expenses.reduce((sum, item) => sum + item.amount, 0);
             const cardTotal = expenses
@@ -961,7 +983,6 @@
             document.getElementById('statPending').innerText = pendingCount;
         }
 
-        // Build Google Calendar Event URL
         function createGoogleCalendarLink(item) {
             if (!item.dueDate) return '#';
 
@@ -981,7 +1002,6 @@
             return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dates}&details=${detailsEncoded}`;
         }
 
-        // Export Excel SheetJS
         function exportToExcel() {
             if (expenses.length === 0) {
                 showToast('No hay datos para exportar', 'error');
@@ -1036,14 +1056,8 @@
             return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
         }
 
-        function getFutureDate(days) {
-            const d = new Date();
-            d.setDate(d.getDate() + days);
-            return d.toISOString().split('T')[0];
-        }
-
         function escapeHtml(str) {
-            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+            return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;") : '';
         }
 
         function showToast(msg, type = 'success') {
